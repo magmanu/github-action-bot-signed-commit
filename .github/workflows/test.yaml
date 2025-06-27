@@ -33,21 +33,22 @@ jobs:
           TARGET_REF: qa
           FILE_LIST: file_list.txt
 
-    - name: Validate commit
-      run: |
-        # Get the latest commit SHA from the target branch
-        latest_commit_sha=$(gh api repos/${{ github.repository }}/git/ref/heads/$TARGET_REF --jq '.object.sha')
-  
-        if [[ "$latest_commit_sha" == ${{ steps.test.outputs.sha }} ]]; then
-          echo "The commit was succesfully pushed to the target ref."
-        else
-          echo "Failure to push the commit to the target ref."
-          exit 1
-        fi
-
-        if git log -1 --pretty=format:'%G?' | grep -q 'G'; then
-          echo "Commit is successfully signed and verified."
-        else
-          echo "Failure to sign or verify commit."
-          exit 1
-        fi
+      - name: Validate commit
+        run: |
+          # Get the latest commit SHA from the target branch
+          latest_commit_sha=$(gh api repos/${{ github.repository }}/git/ref/heads/$TARGET_REF --jq '.object.sha')
+          
+          if [[ "$latest_commit_sha" == ${{ steps.test.outputs.sha }} ]]; then
+            echo "The commit was succesfully pushed to the target ref."
+          else
+            echo "Failure to push the commit to the target ref."
+            exit 1
+          fi
+          
+          if git log -1 --pretty=format:'%G?' | grep -q 'G'; then
+            echo "Commit is successfully signed and verified."
+          else
+            echo "Failure to sign or verify commit."
+            exit 1
+          fi
+          
