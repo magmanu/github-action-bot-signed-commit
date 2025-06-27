@@ -54,19 +54,17 @@ runs:
         echo "Files to commit:"
         cat "$FILE_LIST"
 
+        if [ -z "$FILE_LIST" ]; then
+          echo "FILE_LIST is empty"
+        fi
+        
+        if [ ! -f "$FILE_LIST" ]; then
+          echo "FILE_LIST does not exist or is not a regular file - $file_path"
+        fi
+
         tree_items_file=$(mktemp)
         echo "[" > "$tree_items_file"
         first=1
-
-        if [ -z "$FILE_LIST" ]; then
-            echo "Skipping: FILE_LIST is empty"
-            continue
-          fi
-        
-          if [ ! -f "$FILE_LIST" ]; then
-            echo "Skipping: FILE_LIST does not exist or is not a regular file - $file_path"
-            continue
-          fi
 
         while IFS= read -r -d '' file_path; do
 
