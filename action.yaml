@@ -122,6 +122,7 @@ runs:
         parent_commit="$latest_commit"
 
         for ((batch=0; batch<batches; batch++)); do
+            echo "Processing batch $((batch + 1)) of $batches"
             start=$((batch * batch_size))
             end=$((start + batch_size - 1))
             batch_file=$(mktemp)
@@ -150,12 +151,13 @@ runs:
               curl -s -H "Authorization: token $TOKEN" -H "Accept: application/vnd.github+json" \
                 -X POST "$API/git/commits" --data-binary @- | jq -r '.sha')
 
-                # Update base_tree for next batch
+            # Update base_tree for next batch
             base_tree="$new_tree_sha"
             rm "$batch_file"
         done
 
         # Update branch ref to the last commit
+
         curl -s -H "Authorization: token $TOKEN" -X PATCH \
           -d "{\"sha\":\"$parent_commit\"}" "$API/git/refs/heads/$DESTINATION_REF"
         echo "Deployment completed successfully. New commit SHA: $parent_commit"
