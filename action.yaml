@@ -13,7 +13,7 @@ inputs:
     description: "If signing commits using Github Apps, provide the private key"
     required: false
     type: string
-  DESTINATION_REF:
+  TARGET_REF:
     description: "The branch where the signed commits will be pushed to"
     required: false
     type: string
@@ -22,6 +22,10 @@ inputs:
     description: "The path to any bash script that will be run to sign the commits. Must be in the origin ref. E.g.: my_dir/script.sh"
     required: false
     type: string
+outputs:
+  sha:
+    description: "Signed and verified head sha for target ref"
+    value: ${{ steps.sign_and_push.outputs.sha }}
 
 runs:
   using: "composite"
@@ -37,10 +41,11 @@ runs:
 
     - name: Sign and push commits
       shell: bash
+      id: sign_and_push
       env:
         TOKEN: ${{ steps.app-token.outputs.token || github.token }}
         API: "https://api.github.com/repos/${{ github.repository }}"
-        DESTINATION_REF: ${{ inputs.DESTINATION_REF }}
+        TARGET_REF: ${{ inputs.TARGET_REF }}
         FILE_LIST: ${{ inputs.FILE_LIST }}
       run: |
         #!/bin/bash
@@ -119,7 +124,7 @@ runs:
 
         echo "Get the latest commit"
         latest_commit=$(curl -s -H "Authorization: token $TOKEN" \
-            "$API/git/refs/heads/$DESTINATION_REF" \
+            "$API/git/refs/heads/$TARGET_REF" \
             | jq -r '.object.sha')
 
         echo "Get the tree of the latest commit"
@@ -167,6 +172,8 @@ runs:
         # Update branch ref to the last commit
 
         curl -s -H "Authorization: token $TOKEN" -X PATCH \
-          -d "{\"sha\":\"$parent_commit\"}" "$API/git/refs/heads/$DESTINATION_REF"
+          -d "{\"sha\":\"$parent_commit\"}" "$API/git/refs/heads/$TARGET_REF"
         echo "Deployment completed successfully. New commit SHA: $parent_commit"
+
+        echo "sha=$(echo $parent_commit)"" >> $GITHUB_OUTPUT
 
