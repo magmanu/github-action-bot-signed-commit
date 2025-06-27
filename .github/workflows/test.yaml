@@ -27,7 +27,7 @@ jobs:
           git rev-parse --abbrev-ref HEAD 
 
       - name: Test action
-        uses: 
+        uses: ./
         with:
           DESTINATION_REF: qa
           FILE_LIST: file_list.txt
