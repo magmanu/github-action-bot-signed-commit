@@ -62,6 +62,7 @@ runs:
           [ -z "$file_path" ] || [ ! -f "$file_path" ] && continue
 
           mime_type=$(file --mime-type -b "$file_path")
+          echo "MIME type: $mime_type"
           is_binary="false"
           [[ ! "$mime_type" =~ text ]] && is_binary="true"
 
