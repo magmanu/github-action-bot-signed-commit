@@ -37,7 +37,7 @@ runs:
 
     - name: Sign and push commits
       shell: bash
-      run: script.sh
+      run: ${{ github.action_path }}/script.sh
       env:
         TOKEN: ${{ steps.app-token.outputs.token || github.token }}
         API: "https://api.github.com/repos/${{ github.repository }}"
