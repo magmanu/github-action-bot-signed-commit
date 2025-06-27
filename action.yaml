@@ -57,9 +57,8 @@ runs:
         tree_items_file=$(mktemp)
         echo "[" > "$tree_items_file"
         first=1
-
-        while IFS= read -r -d '' file_path; do
-          if [ -z "$file_path" ]; then
+        
+        if [ -z "$file_path" ]; then
             echo "Skipping: file_path is empty"
             continue
           fi
@@ -68,6 +67,8 @@ runs:
             echo "Skipping: file_path does not exist or is not a regular file - $file_path"
             continue
           fi
+
+        while IFS= read -r -d '' file_path; do
 
           mime_type=$(file --mime-type -b "$file_path")
           echo "MIME type: $mime_type"
