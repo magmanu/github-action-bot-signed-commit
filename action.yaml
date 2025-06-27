@@ -175,5 +175,5 @@ runs:
           -d "{\"sha\":\"$parent_commit\"}" "$API/git/refs/heads/$TARGET_REF"
         echo "Deployment completed successfully. New commit SHA: $parent_commit"
 
-        echo "sha=$(echo $parent_commit)"" >> $GITHUB_OUTPUT
+        echo "sha=$(echo $parent_commit)" >> $GITHUB_OUTPUT
 
