@@ -5,61 +5,61 @@ branding:
   icon: "book-open"
 
 inputs:
-  APP_ID:
-    description: "If signing commits using Github Apps, provide the App ID"
+  TOKEN:
+    description: "If signing commits for Github Apps, provide the App token. If not provided, the action will automatically use GITHUB_TOKEN."
     required: false
     type: string
-  APP_PRIVATE_KEY:
-    description: "If signing commits using Github Apps, provide the private key"
+    default: ${{ github.token }}
+  TARGET_OWNER:
+    description: "The repository owner (user or org)"
     required: false
     type: string
+    default: ${{ github.repository_owner }}
+  TARGET_REPO:
+    description: "The repository name where the commits will be signed and pushed to."
+    required: false
+    type: string
+    default: ${{ github.event.repository.name }}
   TARGET_REF:
-    description: "The branch where the signed commits will be pushed to"
+    description: "The branch where the signed commits will be pushed to."
     required: false
     type: string
-    default: ${{ github.event.pull_request.head.ref || github.ref_name || 'main' }}
   FILE_LIST:
-    description: "The path to any bash script that will be run to sign the commits. Must be in the origin ref. E.g.: my_dir/script.sh"
+    description: "The path to a text file containing the list of file paths to be committed. E.g.: subdir/file_paths.txt"
     required: false
     type: string
 outputs:
   sha:
-    description: "Signed and verified head sha for target ref"
+    description: "SHA of the verified commit"
     value: ${{ steps.sign_and_push.outputs.sha }}
 
 runs:
   using: "composite"
   steps:
-    - name: Get GitHub App Token
-      if: ${{ inputs.APP_ID && inputs.PRIVATE_KEY }}
-      uses: actions/create-github-app-token@v2
-      id: app-token
-      with:
-        app-id: ${{ inputs.APP_ID }}
-        private-key: ${{ inputs.APP_PRIVATE_KEY }}
-        owner: ${{ github.repository_owner }}
-
     - name: Sign and push commits
       shell: bash
       id: sign_and_push
       env:
-        TOKEN: ${{ steps.app-token.outputs.token || github.token }}
-        API: "https://api.github.com/repos/${{ github.repository }}"
+        TOKEN: ${{ inputs.token }}
+        TARGET_OWNER: ${{ github.repository_owner }}
+        TARGET_REPO: ${{ github.event.repository.name }}
         TARGET_REF: ${{ inputs.TARGET_REF }}
         FILE_LIST: ${{ inputs.FILE_LIST }}
       run: |
         #!/bin/bash
         set -euo pipefail
 
+        API="https://api.github.com/repos/$OWNER/$REPO"
         if [[ ! -f "$FILE_LIST" ]]; then
           echo "List of files to commit not found: $FILE_LIST"
           exit 1
         else
-          echo "List of files to commit found: $FILE_LIST"
+          echo "::debug::List of files to commit found: $FILE_LIST"
         fi
 
-        echo "Files to commit:"
+        echo "::group::Files to commit"
         cat "$FILE_LIST"
+        echo "::endgroup::"
 
         tree_items_file=$(mktemp)
         echo "[" > "$tree_items_file"
@@ -69,12 +69,12 @@ runs:
 
           if [[ ! -f "$file_path" ]]; then
             echo "File not found: $file_path"
-          else
-            echo "Processing file: $file_path"
+            exit 1
           fi
 
           mime_type=$(file --mime-type -b "$file_path")
-          echo "MIME type: $mime_type"
+          echo "::debug::MIME type: $mime_type"
+
           is_binary="false"
           [[ ! "$mime_type" =~ text ]] && is_binary="true"
 
@@ -121,7 +121,6 @@ runs:
         batch_size=100
         batches=$(( (total_items + batch_size - 1) / batch_size ))
 
-
         echo "Get the latest commit"
         latest_commit=$(curl -s -H "Authorization: token $TOKEN" \
             "$API/git/refs/heads/$TARGET_REF" \
@@ -135,7 +134,7 @@ runs:
         parent_commit="$latest_commit"
 
         for ((batch=0; batch<batches; batch++)); do
-            echo "Processing batch $((batch + 1)) of $batches"
+            echo "::group::Performing signed commit. Batch $((batch + 1)) of $batches"
             start=$((batch * batch_size))
             end=$((start + batch_size - 1))
             batch_file=$(mktemp)
@@ -143,18 +142,18 @@ runs:
             # Extract a batch of tree items
             jq ".[$start:$((end+1))]" "$tree_items_file" > "$batch_file"
 
-            # Build the tree JSON for this batch
+            echo "Building tree"
             tree_json=$(jq -n \
               --arg base_tree "$base_tree" \
               --slurpfile tree_items "$batch_file" \
               '{base_tree: $base_tree, tree: $tree_items[0]}')
 
-            # Create new tree with GH API 
+            echo "Create new tree with GH API" 
             new_tree_sha=$(echo "$tree_json" | \
               curl -s -H "Authorization: token $TOKEN" -H "Accept: application/vnd.github+json" \
                 -X POST "$API/git/trees" --data-binary @- | jq -r '.sha')
 
-            # Create commit with GH API (will be signed)
+            echo "Create commit with GH API (will be signed)"
             commit_json=$(jq -n \
               --arg msg "Batch deploy $(date --utc +'%Y-%m-%dT%H:%M:%SZ')" \
               --arg tree "$new_tree_sha" \
@@ -164,13 +163,13 @@ runs:
               curl -s -H "Authorization: token $TOKEN" -H "Accept: application/vnd.github+json" \
                 -X POST "$API/git/commits" --data-binary @- | jq -r '.sha')
 
-            # Update base_tree for next batch
+            echo "Update base_tree for next batch"
             base_tree="$new_tree_sha"
             rm "$batch_file"
+            echo "::endgroup::"
         done
 
-        # Update branch ref to the last commit
-
+        echo "Update the target branch with the new commit"
         curl -s -H "Authorization: token $TOKEN" -X PATCH \
           -d "{\"sha\":\"$parent_commit\"}" "$API/git/refs/heads/$TARGET_REF"
         echo "Deployment completed successfully. New commit SHA: $parent_commit"
