@@ -35,8 +35,8 @@ jobs:
       - name: Validate commit
         env:
           GH_TOKEN: ${{ github.token }}
-          TARGET_REF: qa
           SHA: ${{ steps.test.outputs.sha }}
+          TARGET_REF: qa
         run: |
           # Get the latest commit SHA from the target branch
           latest_commit_sha=$(gh api repos/${{ github.repository }}/git/ref/heads/$TARGET_REF --jq '.object.sha')
