@@ -60,14 +60,14 @@ runs:
 
         while IFS= read -r -d '' file_path; do
           if [ -z "$file_path" ]; then
-    echo "Skipping: file_path is empty"
-    continue
-  fi
-
-  if [ ! -f "$file_path" ]; then
-    echo "Skipping: file_path does not exist or is not a regular file - $file_path"
-    continue
-  fi
+            echo "Skipping: file_path is empty"
+            continue
+          fi
+        
+          if [ ! -f "$file_path" ]; then
+            echo "Skipping: file_path does not exist or is not a regular file - $file_path"
+            continue
+          fi
 
           mime_type=$(file --mime-type -b "$file_path")
           echo "MIME type: $mime_type"

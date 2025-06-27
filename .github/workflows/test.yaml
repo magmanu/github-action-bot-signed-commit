@@ -24,10 +24,10 @@ jobs:
           echo "$(git diff --name-only origin/qa...HEAD)" > file_list.txt
           cat file_list.txt
 
-          git rev-parse --abbrev-ref HEAD
+          git rev-parse --abbrev-ref HEAD 
 
       - name: Test action
-        uses: ./
+        uses: 
         with:
           DESTINATION_REF: qa
           FILE_LIST: file_list.txt
