@@ -22,8 +22,9 @@ jobs:
         run: |
           git fetch origin qa
           echo "$(git diff --name-only origin/qa...HEAD)" > file_list.txt
-          git fetch  ${{ github.event.pull_request.head.ref }}
           cat file_list.txt
+
+          git rev-parse --abbrev-ref HEAD
 
       - name: Test action
         uses: ./
