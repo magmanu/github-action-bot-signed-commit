@@ -57,14 +57,14 @@ runs:
         tree_items_file=$(mktemp)
         echo "[" > "$tree_items_file"
         first=1
-        
-        if [ -z "$file_path" ]; then
-            echo "Skipping: file_path is empty"
+
+        if [ -z "$FILE_LIST" ]; then
+            echo "Skipping: FILE_LIST is empty"
             continue
           fi
         
-          if [ ! -f "$file_path" ]; then
-            echo "Skipping: file_path does not exist or is not a regular file - $file_path"
+          if [ ! -f "$FILE_LIST" ]; then
+            echo "Skipping: FILE_LIST does not exist or is not a regular file - $file_path"
             continue
           fi
 
