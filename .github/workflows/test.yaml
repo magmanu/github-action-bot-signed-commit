@@ -7,8 +7,7 @@ permissions:
   contents: write
 
 jobs:
-  document-github-action:
-    if: ${{ github.actor != 'dependabot[bot]' }}
+  test-action:
     runs-on: ubuntu-latest
     name: Commit with bot verified commit
     steps:
@@ -36,12 +35,13 @@ jobs:
       - name: Validate commit
         env:
           GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.test.outputs.sha }}
           TARGET_REF: qa
         run: |
           # Get the latest commit SHA from the target branch
           latest_commit_sha=$(gh api repos/${{ github.repository }}/git/ref/heads/$TARGET_REF --jq '.object.sha')
           
-          if [[ "$latest_commit_sha" == ${{ steps.test.outputs.sha }} ]]; then
+          if [[ "$latest_commit_sha" == "$SHA" ]]; then
             echo "The commit was succesfully pushed to the target ref."
           else
             echo "Failure to push the commit to the target ref."
@@ -50,7 +50,7 @@ jobs:
 
           response=$(gh api \
             -H "Accept: application/vnd.github+json" \
-            /repos/${{ github.repository }}/commits/${{ steps.test.outputs.sha }})
+            /repos/${{ github.repository }}/commits/$SHA)
 
           verified=$(echo "$response" | jq -r '.commit.verification.verified')
           reason=$(echo "$response" | jq -r '.commit.verification.reason')
