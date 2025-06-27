@@ -41,7 +41,7 @@ runs:
         TOKEN: ${{ steps.app-token.outputs.token || github.token }}
         API: "https://api.github.com/repos/${{ github.repository }}"
         DESTINATION_REF: ${{ inputs.DESTINATION_REF }}
-        FILE_LIST: ${{ github.event.pull_request.changed_files || 0 }}
+        FILE_LIST: ${{ inputs.FILE_LIST }}
       run: |
         #!/bin/bash
         set -euo pipefail
