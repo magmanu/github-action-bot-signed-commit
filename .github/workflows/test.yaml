@@ -23,6 +23,7 @@ jobs:
           git fetch origin qa
           echo "$(git diff --name-only origin/qa...HEAD)" > file_list.txt
           cat file_list.txt
+          git checkout qa
 
       - name: Generate action docs
         uses: ./
