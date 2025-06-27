@@ -21,7 +21,7 @@ jobs:
       - name: Create list of files to sign
         run: |
           git fetch origin qa
-          echo "$(git diff origin/qa...HEAD)" > file_list.txt
+          echo "$(git diff --name-only origin/qa...HEAD)" > file_list.txt
           cat file_list.txt
 
       - name: Generate action docs
