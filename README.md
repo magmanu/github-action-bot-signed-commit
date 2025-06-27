@@ -11,6 +11,11 @@ Enable bots to sign commits in GitHub Actions
 |-----|-----|-----|-----|-----|
 | APP_ID | False | string |  | If signing commits using Github Apps, provide the App ID |
 | APP_PRIVATE_KEY | False | string |  | If signing commits using Github Apps, provide the private key |
-| DESTINATION_REF | False | string | `${{ github.event.pull_request.head.ref || github.ref_name || 'main' }}` | The branch where the signed commits will be pushed to |
+| TARGET_REF | False | string | `${{ github.event.pull_request.head.ref || github.ref_name || 'main' }}` | The branch where the signed commits will be pushed to |
 | FILE_LIST | False | string |  | The path to any bash script that will be run to sign the commits. Must be in the origin ref. E.g.: my_dir/script.sh |
+
+# outputs
+| Title | Description | Value |
+|-----|-----|-----|
+|sha | Signed and verified head sha for target ref |  `${{ steps.sign_and_push.outputs.sha }}` | 
 <!-- END_ACTION_DOCS -->
