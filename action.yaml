@@ -51,6 +51,9 @@ runs:
           exit 1
         fi
 
+        echo "Current branch:""
+        git rev-parse --abbrev-ref HEAD
+
         echo "Files to commit:"
         cat "$FILE_LIST"
 
