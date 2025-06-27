@@ -49,7 +49,7 @@ runs:
         #!/bin/bash
         set -euo pipefail
 
-        API="https://api.github.com/repos/$OWNER/$REPO"
+        API="https://api.github.com/repos/$TARGET_OWNER/$TARGET_REPO"
         if [[ ! -f "$FILE_LIST" ]]; then
           echo "List of files to commit not found: $FILE_LIST"
           exit 1
