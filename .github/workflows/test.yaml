@@ -1,0 +1,32 @@
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  document-github-action:
+    if: ${{ github.actor != 'dependabot[bot]' }}
+    runs-on: ubuntu-latest
+    name: Commit with bot verified commit
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create list of files to sign
+        run: |
+          git fetch origin qa
+          echo "$(git diff origin/qa...HEAD)" > file_list.txt
+          cat file_list.txt
+
+      - name: Generate action docs
+        uses: ./
+        with:
+          DESTINATION_REF: qa
+          FILE_LIST: file_list.txt
+          

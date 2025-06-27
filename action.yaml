@@ -1,0 +1,45 @@
+name: "github-actions-bot-signed-commit"
+description: "Enable bots to sign commits in GitHub Actions"
+branding:
+  color: "green"
+  icon: "book-open"
+
+inputs:
+  APP_ID:
+    description: "If signing commits using Github Apps, provide the App ID"
+    required: false
+    type: string
+  APP_PRIVATE_KEY:
+    description: "If signing commits using Github Apps, provide the private key"
+    required: false
+    type: string
+  DESTINATION_REF:
+    description: "The branch where the signed commits will be pushed to"
+    required: false
+    type: string
+    default: ${{ github.event.pull_request.head.ref || github.ref_name || 'main' }}
+  FILE_LIST:
+    description: "The path to any bash script that will be run to sign the commits. Must be in the origin ref. E.g.: my_dir/script.sh"
+    required: false
+    type: string
+
+runs:
+  using: "composite"
+  steps:
+    - name: Get GitHub App Token
+      if: ${{ inputs.APP_ID && inputs.PRIVATE_KEY }}
+      uses: actions/create-github-app-token@v2
+      id: app-token
+      with:
+        app-id: ${{ inputs.APP_ID }}
+        private-key: ${{ inputs.APP_PRIVATE_KEY }}
+        owner: ${{ github.repository_owner }}
+
+    - name: Sign and push commits
+      shell: bash
+      run: script.sh
+      env:
+        TOKEN: ${{ steps.app-token.outputs.token || github.token }}
+        API: "https://api.github.com/repos/${{ github.repository }}"
+        DESTINATION_REF: ${{ inputs.DESTINATION_REF }}
+        FILE_LIST: ${{ github.event.pull_request.changed_files || 0 }}
