@@ -49,18 +49,12 @@ runs:
         if [[ ! -f "$FILE_LIST" ]]; then
           echo "List of files to commit not found: $FILE_LIST"
           exit 1
+        else
+          echo "List of files to commit found: $FILE_LIST"
         fi
 
         echo "Files to commit:"
         cat "$FILE_LIST"
-
-        if [ -z "$FILE_LIST" ]; then
-          echo "FILE_LIST is empty"
-        fi
-        
-        if [ ! -f "$FILE_LIST" ]; then
-          echo "FILE_LIST does not exist or is not a regular file - $file_path"
-        fi
 
         tree_items_file=$(mktemp)
         echo "[" > "$tree_items_file"
