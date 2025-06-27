@@ -22,6 +22,7 @@ jobs:
         run: |
           git fetch origin qa
           echo "$(git diff --name-only origin/qa...HEAD)" > file_list.txt
+          git checkout  ${{ github.event.pull_request.head.ref }}
           cat file_list.txt
 
       - name: Generate action docs
