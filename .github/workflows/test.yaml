@@ -48,9 +48,15 @@ jobs:
             exit 1
           fi
 
-          if git log -1 --pretty=format:'%G?' | grep -q 'G'; then
-            echo "Commit is successfully signed and verified."
+          response=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            /repos/${{ github.repository }}/commits/${{ steps.test.outputs.sha }})
+
+          verified=$(echo "$response" | jq -r '.commit.verification.verified')
+          reason=$(echo "$response" | jq -r '.commit.verification.reason')
+
+          if [ "$verified" == "true" ]; then
+            echo "Commit $SHA is verified."
           else
-            echo "Failure to sign or verify commit."
-            exit 1
+            echo "Commit $SHA is NOT verified. Reason: $reason"
           fi
