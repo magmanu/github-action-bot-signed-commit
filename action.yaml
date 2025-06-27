@@ -46,12 +46,6 @@ runs:
         #!/bin/bash
         set -euo pipefail
 
-        CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-        if [[ "$CURRENT_BRANCH" != "$DESTINATION_REF" ]]; then
-            echo "Aborting script: ref $CURRENT_BRANCH is checked out. Expected: $DESTINATION_REF";
-            exit 1;
-        fi
-
         if [[ ! -f "$FILE_LIST" ]]; then
           echo "List of files to commit not found: $FILE_LIST"
           exit 1
