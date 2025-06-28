@@ -32,6 +32,16 @@ inputs:
     description: "The path to a text file containing the list of file paths to be committed. E.g.: subdir/file_paths.txt"
     required: false
     type: string
+  WORKING_DIR:
+    description: "The working directory where the action will run. Defaults to the root of the repository."
+    required: false
+    type: string
+    default: ${{ github.workspace }}
+  IS_DRY_RUN:
+    description: "If set to true, the action will not push the commits, but will still sign them. Useful for testing."
+    required: false
+    type: boolean
+    default: false
 outputs:
   sha:
     description: "SHA of the verified commit"
@@ -49,6 +59,8 @@ runs:
         TARGET_REPO: ${{ github.event.repository.name }}
         TARGET_REF: ${{ inputs.TARGET_REF }}
         FILE_LIST: ${{ inputs.FILE_LIST }}
+        IS_DRY_RUN: ${{ inputs.IS_DRY_RUN }}
+      working-directory: ${{ inputs.WORKING_DIR }}
       run: |
         #!/bin/bash
         set -euo pipefail
@@ -173,10 +185,14 @@ runs:
             echo "::endgroup::"
         done
 
-        echo "Update the target branch with the new commit"
-        curl -s -H "Authorization: token $TOKEN" -X PATCH \
-          -d "{\"sha\":\"$parent_commit\"}" "$API/git/refs/heads/$TARGET_REF"
-        echo "Deployment completed successfully. New commit SHA: $parent_commit"
+        if [[ "${IS_DRY_RUN}" == "true" ]]; then
+            echo "Dry run mode is enabled. The target branch head will not point to the new signed commit."
+        else
+            echo "Update the target branch with the new commit"
+            curl -s -H "Authorization: token $TOKEN" -X PATCH \
+              -d "{\"sha\":\"$parent_commit\"}" "$API/git/refs/heads/$TARGET_REF"
+            echo "Target branch successfully updated with the new signed commit."
+        fi
 
+        echo "New signed commit SHA: $parent_commit"
         echo "sha=$(echo $parent_commit)" >> $GITHUB_OUTPUT
-
