@@ -1,7 +1,7 @@
 <!-- BEGIN_ACTION_DOCS -->
 
 # github-actions-bot-signed-commit
-Enable bots to sign commits in GitHub Actions
+Sign commits using either a GitHub App or GITHUB_TOKEN, it's  particularly helpful for repos/orgs that enforce signed commits. At the moment, Github doesn't natively provide a verified badge for  `github_token` or Github Apps, only for users (humans/service accounts).
 
 # inputs
 | Title | Required | Type | Default| Description |
