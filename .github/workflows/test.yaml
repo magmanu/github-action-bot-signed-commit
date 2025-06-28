@@ -38,6 +38,7 @@ jobs:
         run: |
           # Get the latest commit SHA from the target branch
           latest_commit_sha=$(gh api repos/${{ github.repository }}/git/ref/heads/$TARGET_REF --jq '.object.sha')
+          echo "Latest commit SHA on $TARGET_REF: $latest_commit_sha"
           
           if [[ "$latest_commit_sha" == "$SHA" ]]; then
             echo "The commit was succesfully pushed to the target ref."
