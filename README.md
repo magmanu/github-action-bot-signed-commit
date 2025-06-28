@@ -11,6 +11,8 @@ Sign commits using either a GitHub App or GITHUB_TOKEN, it's  particularly helpf
 | TARGET_REPO | False | string | `${{ github.event.repository.name }}` | The repository name where the commits will be signed and pushed to. |
 | TARGET_REF | False | string |  | The branch where the signed commits will be pushed to. |
 | FILE_LIST | False | string |  | The path to a text file containing the list of file paths to be committed. E.g.: subdir/file_paths.txt |
+| WORKING_DIR | False | string | `${{ github.workspace }}` | The working directory where the action will run. Defaults to the root of the repository. |
+| IS_DRY_RUN | False | boolean |  | If set to true, the action will not push the commits, but will still sign them. Useful for testing. |
 
 # outputs
 | Title | Description | Value |
