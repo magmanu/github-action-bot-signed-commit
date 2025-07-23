@@ -1,18 +1,18 @@
 <!-- BEGIN_ACTION_DOCS -->
 
 # github-actions-bot-signed-commit
-Sign commits using either a GitHub App or GITHUB_TOKEN. It's  particularly helpful for repos/orgs that enforce signed commits. At the moment, Github doesn't natively provide a verified badge for `github.token` or Github Apps, only for users (humans/service accounts).
+Sign commits using either a GitHub App or GITHUB_TOKEN.  It's particularly helpful for repos/orgs that enforce signed commits.  At the moment, Github doesn't natively provide a verified badge for ` github.token` or Github Apps, only for users (humans/service accounts).
 
 # inputs
 | Title | Required | Type | Default| Description |
 |-----|-----|-----|-----|-----|
-| TOKEN | False | string | `${{ github.token }}` | If signing commits for Github Apps, provide the App token. If not provided, the action will automatically use GITHUB_TOKEN. |
-| TARGET_OWNER | False | string | `${{ github.repository_owner }}` | The repository owner (user or org) |
-| TARGET_REPO | False | string | `${{ github.event.repository.name }}` | The repository name where the commits will be signed and pushed to. |
+| TOKEN | False | string | `${{ github.token }}` | If signing commits with Github Apps, provide the App token. Else, it defults to GITHUB_TOKEN. |
+| TARGET_OWNER | False | string | `${{ github.repository_owner }}` | The repository owner (user/org) |
+| TARGET_REPO | False | string | `${{ github.event.repository.name }}` | The repository where the signed commits will be pushed to. |
 | TARGET_REF | False | string |  | The branch where the signed commits will be pushed to. |
-| FILE_LIST | False | string |  | The path to a text file containing the list of file paths to be committed. E.g.: subdir/file_paths.txt |
-| WORKING_DIR | False | string | `${{ github.workspace }}` | The working directory where the action will run. Defaults to the root of the repository. |
-| IS_DRY_RUN | False | boolean |  | If set to true, the action will not push the commits, but will still sign them. Useful for testing. |
+| FILE_LIST | False | string |  | Path to a text file containing the list of file paths to be committed. E.g.: subdir/file_paths.txt |
+| WORKING_DIR | False | string | `${{ github.workspace }}` | The working directory where the action will run. |
+| IS_DRY_RUN | False | boolean |  | If set to true, the action will push the commits and leave them orphans (the head won't move.) |
 
 # outputs
 | Title | Description | Value |
@@ -134,3 +134,4 @@ jobs:
           FILE_LIST: .github/files.txt
           WORKING_DIR: deployment # the directory for "repo2"
 ```
+
