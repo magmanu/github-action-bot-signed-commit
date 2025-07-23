@@ -40,6 +40,9 @@ jobs:
           SHA: ${{ steps.test.outputs.sha }}
           TARGET_REF: qa
         run: |
+          # Cool off
+          sleep 10
+
           # Get the latest commit SHA from the target branch
           latest_commit_sha=$(gh api repos/${{ github.repository }}/git/ref/heads/$TARGET_REF --jq '.object.sha')
           echo "Latest commit SHA on $TARGET_REF: $latest_commit_sha"
