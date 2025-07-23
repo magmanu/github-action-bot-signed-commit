@@ -79,3 +79,5 @@ jobs:
         uses: peter-evans/repository-dispatch@v3
         with:
           event-type: action_test
+          client-payload: '{"ref": "${{ env.branch }}"}'
+
