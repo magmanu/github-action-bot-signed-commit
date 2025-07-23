@@ -1,7 +1,7 @@
 <!-- BEGIN_ACTION_DOCS -->
 
 # github-actions-bot-signed-commit
-Sign commits using either a GitHub App or GITHUB_TOKEN, it's  particularly helpful for repos/orgs that enforce signed commits. At the moment, Github doesn't natively provide a verified badge for  `github_token` or Github Apps, only for users (humans/service accounts).
+Sign commits using either a GitHub App or GITHUB_TOKEN. It's  particularly helpful for repos/orgs that enforce signed commits. At the moment, Github doesn't natively provide a verified badge for `github.token` or Github Apps, only for users (humans/service accounts).
 
 # inputs
 | Title | Required | Type | Default| Description |
@@ -20,25 +20,24 @@ Sign commits using either a GitHub App or GITHUB_TOKEN, it's  particularly helpf
 |sha | SHA of the verified commit |  `${{ steps.sign_and_push.outputs.sha }}` | 
 <!-- END_ACTION_DOCS -->
 
-# Features 
+# Permissions
+
+| Type           | Scope                               |
+| -------------- | ----------------------------------- |
+| `GITHUB_TOKEN` | `contents: write`                   |
+| Github App     | `contents: write`, `metadata: read` |
+
+# Features
 
 - Sign commits with a bot identity (`GITHUB_TOKEN` or Github App)
-- Push to the same repository or a different one, to an existing branch of your choice
+- Push to the same repository or to a different one, to an existing branch of your choice
 - Specify a list of files to be committed
 - Handle large binary or text files
 - Dry run mode test the commit signing push without changing the target branch head
 
-# Permissions
-
-- GITHUB_TOKEN  
-`contents: write`
-
-- Github App  
-`contents: write`, `metadata: read`
-
 # Usage
 
-## Basic (`GITHUB_TOKEN` - push to the same repository)
+## Basic: `GITHUB_TOKEN` - push to the same repository
 
 ```yaml
 jobs:
@@ -65,11 +64,8 @@ jobs:
           IS_DRY_RUN: true # the commit will be pushed, but the branch head won't move
 ```
 
-## Advanced (Github App - push to a different repository)
+## Advanced: Github App - push to a different repository
 
-This example is a bit over the top just to sshow how to commit files from one repository in a different repository* and add some processing in between. 
-
-_*Yeah, it's technically the same repo checked out twice with different branches, and there are other ways of doing it, but that's why I said it's a bit over the top because it's just an example._
 
 ```yaml
 jobs:
@@ -80,13 +76,14 @@ jobs:
       - uses: actions/create-github-app-token@v2
         id: app-token
         with:
-          app-id: ${{ secrets.APPSEC_GH_APP_ID }}
-          private-key: ${{ secrets.APPSEC_GH_APP_PEM }}
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PEM }}
           owner: ${{ github.repository_owner }}
 
       - name: Checkout repo1
         uses: actions/checkout@v4
         with:
+          repository: owner/source
           token: ${{ steps.app-token.outputs.token }}
           ref: ${{ github.ref }}
           fetch-depth: 2
@@ -95,30 +92,21 @@ jobs:
       - name: Checkout repo2
         uses: actions/checkout@v4
         with:
+          repository: owner/deployment
           token: ${{ steps.app-token.outputs.token }}
           ref: gh-pages
           fetch-depth: 2
           path: deployment
-
-      - uses: actions/setup-python@v4
-        with:
-          python-version: 3.x
-      - run: echo "cache_id=$(date --utc '+%V')" >> $GITHUB_ENV 
-      - uses: actions/cache@v4
-        with:
-          key: mkdocs-material-${{ env.cache_id }}
-          path: .cache 
-          restore-keys: |
-            mkdocs-material-
-
-      - run: pip install -r source/requirements.txt
 
       - name: Build
         env:
           MKDOCS_GIT_COMMITTERS_APIKEY: ${{ github.token }}
         run: |
           #!/usr/bin/env bash
+
           set -euo pipefail
+
+          pip install -r source/requirements.txt
 
           # Make a few changes in files from repo1
           cd source 
@@ -135,8 +123,10 @@ jobs:
           echo $(git ls-files --others --exclude-standard) > .github/files.txt
 
       - name: Sign commits and push to develop branch
-      # Depending on how many files you are committing, you will end up with multiple commits in your target branch.
-      # In this case your branch will point to the most recent commit once the process is finished.
+      # Depending on how many files you are committing, 
+      # you will end up with multiple commits in your target branch.
+      # In this case, your branch will point to the most recent commit 
+      # once the process is finished.
         uses: magmanu/github-actions-bot-signed-commit@<sha> 
         with:
           APP_TOKEN: ${{ steps.app-token.outputs.token }}
