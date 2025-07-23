@@ -1,7 +1,7 @@
-name: "Autodoc"
+name: Autodoc
 on:
  workflow_run:
-    workflows: ["Test"] # Case-sensitive
+    workflows: ["Test Action"] # Case-sensitive
     types:
       - completed
 

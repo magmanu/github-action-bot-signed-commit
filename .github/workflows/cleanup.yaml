@@ -1,0 +1,17 @@
+name: Workflow cleanup
+
+on:
+  schedule:
+    - cron: '0 0 * * 4'  # Every Thursday at midnight UTC
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run Workflow Cleanup Action
+        uses: gesslar/workflow-run-cleaner@main
+        with:
+          token: ${{ github.token }}
+          repo-owner: ${{ github.repository_owner }}
+
