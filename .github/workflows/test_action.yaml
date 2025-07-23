@@ -69,10 +69,10 @@ jobs:
 
       - id: should_trigger
         run: |
-          echo "should_run=false" >> $GITHUB_OUTPUT
-          if git diff --name-only origin/qa...HEAD | grep -qE 'action\.yaml|\.github/workflows/pr_action_docs\.yaml'; then
-            echo "should_run=true" >> $GITHUB_OUTPUT
-          fi
+          echo "should_run=false" | tee -a $GITHUB_OUTPUT
+            if git diff --name-only origin/main...HEAD | grep -qE 'action\.yaml|\.github/workflows/pr_action_docs\.yaml'; then
+              echo "should_run=true" | tee -a $GITHUB_OUTPUT
+            fi
           
       - name: Trigger workflow
         if: ${{ steps.should_trigger.outputs.should_run == 'true' }}
