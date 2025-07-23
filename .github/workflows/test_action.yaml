@@ -6,7 +6,6 @@ on:
 
 permissions:
   contents: write
-  actions: read
 
 jobs:
   test-action:
@@ -77,7 +76,6 @@ jobs:
           
       - name: Trigger workflow
         if: ${{ steps.should_trigger.outputs.should_run == 'true' }}
-        run: |
-          gh workflow run Autodoc --ref ${{ env.branch }}
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          event-type: action_test
