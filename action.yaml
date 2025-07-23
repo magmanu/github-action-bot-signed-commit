@@ -6,21 +6,21 @@ description: >-
   `github_token` or Github Apps, only for users (humans/service accounts).
 branding:
   color: "green"
-  icon: "book-open"
+  icon: "award"
 
 inputs:
   TOKEN:
-    description: "If signing commits for Github Apps, provide the App token. If not provided, the action will automatically use GITHUB_TOKEN."
+    description: "If signing commits with Github Apps, provide the App token. Else, it defults to GITHUB_TOKEN."
     required: false
     type: string
     default: ${{ github.token }}
   TARGET_OWNER:
-    description: "The repository owner (user or org)"
+    description: "The repository owner (user/org)"
     required: false
     type: string
     default: ${{ github.repository_owner }}
   TARGET_REPO:
-    description: "The repository name where the commits will be signed and pushed to."
+    description: "The repository where the signed commits will be pushed to."
     required: false
     type: string
     default: ${{ github.event.repository.name }}
@@ -29,16 +29,16 @@ inputs:
     required: false
     type: string
   FILE_LIST:
-    description: "The path to a text file containing the list of file paths to be committed. E.g.: subdir/file_paths.txt"
+    description: "Path to a text file containing the list of file paths to be committed. E.g.: subdir/file_paths.txt"
     required: false
     type: string
   WORKING_DIR:
-    description: "The working directory where the action will run. Defaults to the root of the repository."
+    description: "The working directory where the action will run."
     required: false
     type: string
     default: ${{ github.workspace }}
   IS_DRY_RUN:
-    description: "If set to true, the action will not push the commits, but will still sign them. Useful for testing."
+    description: "If set to true, the action will push the commits and leave them orphans (the head won't move.)"
     required: false
     type: boolean
     default: false
