@@ -23,5 +23,4 @@ jobs:
 
       - name: Generate action docs
         uses: tjtharrison/github-actions-docs@1
-        with:
-          ACTION_FILE_NAME: ./action.yaml
+
