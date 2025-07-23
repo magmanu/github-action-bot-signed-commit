@@ -1,7 +1,7 @@
 <!-- BEGIN_ACTION_DOCS -->
 
 # github-actions-bot-signed-commit
-Sign commits using either a GitHub App or GITHUB_TOKEN.  It's particularly helpful for repos/orgs that enforce signed commits.  At the moment, Github doesn't natively provide a verified badge for ` github.token` or Github Apps, only for users (humans/service accounts).
+Sign commits using GitHub App or GITHUB_TOKEN. Compatible with large and binary files.
 
 # inputs
 | Title | Required | Type | Default| Description |
@@ -29,11 +29,11 @@ Sign commits using either a GitHub App or GITHUB_TOKEN.  It's particularly helpf
 
 # Features
 
+- Handle large binary or text files
 - Sign commits with a bot identity (`GITHUB_TOKEN` or Github App)
 - Push to the same repository or to a different one, to an existing branch of your choice
 - Specify a list of files to be committed
-- Handle large binary or text files
-- Dry run mode test the commit signing push without changing the target branch head
+- Dry run mode tests the commit signing without moving the target branch head
 
 # Usage
 
