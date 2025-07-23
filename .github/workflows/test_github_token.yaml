@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: env.branch
+          ref: ${{ env.branch }}
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 

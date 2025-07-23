@@ -10,7 +10,6 @@ permissions:
 
 jobs:
   document-github-action:
-    if: ${{ github.event.client_payload.should_run == 'true' }}
     runs-on: ubuntu-latest
     name: Document GitHub action
     steps:
