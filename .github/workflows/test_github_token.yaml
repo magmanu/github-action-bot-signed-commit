@@ -1,3 +1,4 @@
+name: Test
 on:
   pull_request:
     branches:
@@ -10,10 +11,13 @@ jobs:
   test-action:
     runs-on: ubuntu-latest
     name: Commit with bot verified commit
+    env:
+      branch: ${{ github.event.pull_request.head.ref }}
+
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
+          ref: env.branch
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -59,3 +63,17 @@ jobs:
           else
             echo "Commit $SHA is NOT verified. Reason: $reason"
           fi
+
+      - id: should_trigger
+        run: |
+          echo "should_run=false" >> $GITHUB_OUTPUT
+          if git diff --name-only origin/qa...HEAD | grep -qE 'action\.yaml|\.github/workflows/pr_action_docs\.yaml'; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Trigger workflow
+        if: ${{ steps.should_trigger.outputs.should_run == 'true' }}
+        run: |
+          gh workflow run Autodoc --ref ${{ env.branch }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}

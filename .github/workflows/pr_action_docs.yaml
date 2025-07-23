@@ -1,21 +1,16 @@
+name: "Autodoc"
 on:
-  label:
+ workflow_run:
+    workflows: ["Test"] # Case-sensitive
     types:
-      - created
-  pull_request:
-    branches:
-      - main
-    paths-ignore:
-      - .gitignore
-      - README.md
-      - CODEOWNERS
+      - completed
 
 permissions:
   contents: write
 
 jobs:
   document-github-action:
-    if: ${{ github.actor != 'dependabot[bot]' }}
+    if: ${{ github.event.client_payload.should_run == 'true' }}
     runs-on: ubuntu-latest
     name: Document GitHub action
     steps:
