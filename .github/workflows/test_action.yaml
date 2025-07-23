@@ -1,0 +1,83 @@
+name: Test Action
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  test-action:
+    runs-on: ubuntu-latest
+    name: Commit with bot verified commit
+    env:
+      branch: ${{ github.event.pull_request.head.ref }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.branch }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create list of files to sign
+        run: |
+          git fetch origin qa
+          echo "$(git diff --name-only origin/qa...HEAD)" > file_list.txt
+          cat file_list.txt
+
+      - name: Test action
+        id: test
+        uses: ./
+        with:
+          TARGET_REF: qa
+          FILE_LIST: file_list.txt
+
+      - name: Validate commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.test.outputs.sha }}
+          TARGET_REF: qa
+        run: |
+          # Cool off
+          sleep 10
+
+          # Get the latest commit SHA from the target branch
+          latest_commit_sha=$(gh api repos/${{ github.repository }}/git/ref/heads/$TARGET_REF --jq '.object.sha')
+          echo "Latest commit SHA on $TARGET_REF: $latest_commit_sha"
+          
+          if [[ "$latest_commit_sha" == "$SHA" ]]; then
+            echo "The commit was succesfully pushed to the target ref."
+          else
+            echo "Failure to push the commit to the target ref."
+            exit 1
+          fi
+
+          response=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            /repos/${{ github.repository }}/commits/$SHA)
+
+          verified=$(echo "$response" | jq -r '.commit.verification.verified')
+          reason=$(echo "$response" | jq -r '.commit.verification.reason')
+
+          if [ "$verified" == "true" ]; then
+            echo "Commit $SHA is verified."
+          else
+            echo "Commit $SHA is NOT verified. Reason: $reason"
+          fi
+
+      - id: should_trigger
+        run: |
+          echo "should_run=false" >> $GITHUB_OUTPUT
+          if git diff --name-only origin/qa...HEAD | grep -qE 'action\.yaml|\.github/workflows/pr_action_docs\.yaml'; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Trigger workflow
+        if: ${{ steps.should_trigger.outputs.should_run == 'true' }}
+        run: |
+          gh workflow run Autodoc --ref ${{ env.branch }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
