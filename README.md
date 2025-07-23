@@ -20,7 +20,7 @@ Sign commits using either a GitHub App or GITHUB_TOKEN, it's  particularly helpf
 |sha | SHA of the verified commit |  `${{ steps.sign_and_push.outputs.sha }}` | 
 <!-- END_ACTION_DOCS -->
 
-# Features
+# Features 
 
 - Sign commits with a bot identity (`GITHUB_TOKEN` or Github App)
 - Push to the same repository or a different one, to an existing branch of your choice
