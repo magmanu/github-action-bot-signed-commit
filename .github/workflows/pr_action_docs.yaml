@@ -1,7 +1,7 @@
 name: Autodoc
 on:
- repository_dispatch:
-    types: [my-event]
+  repository_dispatch:
+    types: [action_test]
 
 permissions:
   contents: write
@@ -13,9 +13,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.client_payload.ref}}
+          ref: ${{ github.event.client_payload.ref }}
+
       - name: Setup Python
         uses: actions/setup-python@v5
+        with:
+          python-version: '3.13' 
+
       - name: Generate action docs
         uses: tjtharrison/github-actions-docs@1
         with:
