@@ -1,9 +1,7 @@
 name: Autodoc
 on:
- workflow_run:
-    workflows: ["Test Action"] # Case-sensitive
-    types:
-      - completed
+ repository_dispatch:
+    types: [my-event]
 
 permissions:
   contents: write
