@@ -17,5 +17,5 @@ jobs:
         with:
           token: ${{ github.token }}
           repo-owner: ${{ github.repository_owner }}
-          target-cleanup-repos: 'github-action-bot-signed-commit'
+          target-cleanup-repos: 'magmanu/github-action-bot-signed-commit'
 
