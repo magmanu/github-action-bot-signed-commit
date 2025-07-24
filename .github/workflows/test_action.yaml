@@ -14,12 +14,14 @@ jobs:
     env:
       pr_branch: ${{ github.event.pull_request.head.ref }}
     strategy:
+      max-parallel: 1
       fail-fast: false
       matrix:
         include:
-          - { test_type: existing_branch, ref_name: qa, should_create_branch: true } #should_create_branch defaults to true
-          - { test_type: new_branch, should_create_branch: false } 
-          - { test_type: new_branch, should_create_branch: true } 
+          - { test_type: existing_branch, ref_name: qa, should_create_branch: true, trigger_autodoc: false } #should_create_branch defaults to true
+          - { test_type: new_branch, should_create_branch: false, trigger_autodoc: false } 
+          - { test_type: new_branch, should_create_branch: true, trigger_autodoc: false }
+          - { trigger_autodoc: true }
 
 
     steps:
@@ -40,7 +42,9 @@ jobs:
         id: generate_branch_name
         run: |
           echo "Generating new branch name..."
-          echo "qa-${{ github.run_id }}" | tee -a $GITHUB_OUTPUT
+          # Generate a unique branch name based on UTC timestamp
+          now=$(date -u +"%Y%m%d%H%M%S")
+          echo "branch_name=qa-${now}" | tee -a $GITHUB_OUTPUT
 
       - name: Test action
         id: test
@@ -69,7 +73,7 @@ jobs:
           TARGET_REF: ${{ matrix.ref_name || steps.generate_branch_name.outputs.branch_name }}
         run: |
           # Cool off
-          sleep 10
+          sleep 5
 
           # Get the latest commit SHA from the target branch
           latest_commit_sha=$(gh api repos/${{ github.repository }}/git/ref/heads/$TARGET_REF --jq '.object.sha')
@@ -96,6 +100,7 @@ jobs:
           fi
 
       - id: should_trigger
+        if: ${{ matrix.trigger_autodoc == true }}
         run: |
           echo "should_run=false" | tee -a $GITHUB_OUTPUT
             if git diff --name-only origin/main...HEAD | grep -qE 'action\.yaml|\.github/workflows/pr_action_docs\.yaml'; then
