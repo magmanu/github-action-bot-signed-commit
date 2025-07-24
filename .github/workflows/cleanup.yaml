@@ -1,4 +1,4 @@
-name: Workflow cleanup
+name: Weekly cleanup
 
 on:
   schedule:
@@ -12,10 +12,18 @@ jobs:
   cleanup:
     runs-on: ubuntu-latest
     steps:
-      - name: Run Workflow Cleanup Action
+      - name: Remove Old Workflows Runs
         uses: gesslar/workflow-run-cleaner@v1.9.2
         with:
           token: ${{ github.token }}
           repo-owner: ${{ github.repository_owner }}
           target-cleanup-repos: 'magmanu/github-action-bot-signed-commit'
+          days-threshold: 7
+      
+      - name: Remove Testing Branches
+        uses: fpicalausa/remove-stale-branches@v2.4.0
+        with:
+          restrict-branches-regex: ^qa-.*$
+          days-before-branch-stale: 7
+          days-before-branch-delete: 7
 
