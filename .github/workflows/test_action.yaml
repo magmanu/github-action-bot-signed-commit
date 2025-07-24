@@ -57,7 +57,7 @@ jobs:
         if: ${{ steps.test.outcome == 'failure' }}
         run: |
           # if test_type is new_branch and should_create_branch is false, we expect the action to fail
-          if [[ "${{ matrix.test_type }}" == "new_branch" && "${{ matrix.should_create_branch }}" == "false" && "${{ steps.test.outputs.sha }}" == '']]; then
+          if [[ "${{ matrix.test_type }}" == "new_branch" && "${{ matrix.should_create_branch }}" == "false" && "${{ steps.test.outputs.sha }}" == '' ]]; then
             echo "Expected failure from new branch not being created."
             exit 0
           fi
