@@ -20,7 +20,7 @@ jobs:
     env:
       pr_branch: ${{ github.event.pull_request.head.ref }}
     strategy:
-      max-parallel: 1
+      max-parallel: 3 # ensure autodoc runs last, as it can change the last commit on the existing PR and kill the ci
       fail-fast: false
       matrix:
         include:
