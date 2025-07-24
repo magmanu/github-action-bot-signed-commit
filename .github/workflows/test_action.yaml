@@ -10,7 +10,7 @@ permissions:
 jobs:
   test-action:
     runs-on: ubuntu-latest
-    name: Test with ${{ matrix.test_type }}
+    name: "${{ matrix.test_type }} | new ref: ${{ matrix.should_create_branch }} | autodoc: ${{ matrix.trigger_autodoc }}"
     env:
       pr_branch: ${{ github.event.pull_request.head.ref }}
     strategy:
@@ -57,8 +57,8 @@ jobs:
         if: ${{ steps.test.outcome == 'failure' }}
         run: |
           # if test_type is new_branch and should_create_branch is false, we expect the action to fail
-          if [[ "${{ matrix.test_type }}" == "new_branch" && "${{ matrix.should_create_branch }}" == "false" ]]; then
-            echo "Expected failure for new branch without creation. Skipping validation."
+          if [[ "${{ matrix.test_type }}" == "new_branch" && "${{ matrix.should_create_branch }}" == "false" && ${{ steps.test.outputs.sha }} == '']]; then
+            echo "Expected failure from new branch not being created."
             exit 0
           fi
           echo "Action failed in unexpected way."
