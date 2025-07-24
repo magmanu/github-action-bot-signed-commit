@@ -63,10 +63,13 @@ jobs:
           IS_DRY_RUN: ${{ matrix.dry_run == 'dry_run' }}
       
       - name: Handle failure
-        if: ${{ steps.test.outcome == 'failure' }}
+        if: ${{ steps.test.outcome == 'failure' || matrix.dry_run == 'dry_run' }}
         run: |
           if [[ "${{ matrix.test_type }}" == "new_branch" && "${{ matrix.unexisting_branch }}" != "create" && "${{ steps.test.outputs.sha }}" == '' ]]; then
             echo "Expected failure from new branch not being created."
+            exit 0
+          elif [[ "${{ steps.test.outcome }}" != 'failure' && "${{ matrix.dry_run }}" == 'dry_run' ]]; then
+            echo "Action failed as expected."
             exit 0
           fi
           echo "Action failed in unexpected way."
@@ -88,13 +91,13 @@ jobs:
           
           if [[ "$latest_commit_sha" == "$SHA" ]]; then
             echo "The target ref head was successfully moved to the latest commit."
-            if [[ "${{ matrix.dry_run }}" == "dryrun" ]]; then
+            if [[ "${{ matrix.dry_run }}" == "dry_run" ]]; then
               echo "Dry run mode: The head should not have been moved."
               exit 1
             fi
           else
-            if [[ "${{ matrix.dry_run }}" == "dryrun" ]]; then
-              echo "The target ref head was NOT moved to the latest commit."
+            if [[ "${{ matrix.dry_run }}" == "dry_run" ]]; then
+              echo "The target ref head was NOT moved to the latest commit, as expected."
             else
               echo "Failure to push the commit to the target ref."
               exit 1
