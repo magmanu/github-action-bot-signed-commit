@@ -3,6 +3,12 @@ on:
   pull_request:
     branches:
       - main
+    paths-ignore:
+      - .github/workflows/cleanup.yaml
+      - .github/workflows/CODEOWNERS
+      - .github/workflows/dependabot.yaml
+      - .gitignore
+      - '**.md'
 
 permissions:
   contents: write
