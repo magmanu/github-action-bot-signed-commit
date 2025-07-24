@@ -16,7 +16,7 @@ permissions:
 jobs:
   test-action:
     runs-on: ubuntu-latest
-    name: "${{ matrix.test_type }} / new_ref: ${{ matrix.should_create_branch }} / autodoc: ${{ matrix.trigger_autodoc }}"
+    name: "${{ matrix.dry_run }} ${{ matrix.test_type }} | ${{ matrix.unexisting_branch }} ${{ matrix.trigger }}"
     env:
       pr_branch: ${{ github.event.pull_request.head.ref }}
     strategy:
@@ -24,9 +24,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { test_type: existing_branch, ref_name: qa, should_create_branch: true, trigger_autodoc: false } #should_create_branch defaults to true
-          - { test_type: new_branch, should_create_branch: false, trigger_autodoc: false } 
-          - { test_type: new_branch, should_create_branch: true, trigger_autodoc: true }
+          - { test_type: existing_branch, ref_name: qa }
+          - { test_type: existing_branch, ref_name: qa, dry_run: dry_run }
+          - { test_type: new_branch, unexisting_branch: create } 
+          - { test_type: new_branch, trigger: autodoc }
 
     steps:
       - uses: actions/checkout@v4
@@ -57,13 +58,13 @@ jobs:
         with:
           TARGET_REF: ${{ matrix.ref_name || steps.generate_branch_name.outputs.branch_name }}
           FILE_LIST: file_list.txt
-          SHOULD_CREATE_NEW_BRANCH: ${{ matrix.should_create_branch }}
+          SHOULD_CREATE_NEW_BRANCH: ${{ matrix.unexisting_branch == 'create' }}
+          COMMIT_MESSAGE: "A custom message"
       
       - name: Handle failure
         if: ${{ steps.test.outcome == 'failure' }}
         run: |
-          # if test_type is new_branch and should_create_branch is false, we expect the action to fail
-          if [[ "${{ matrix.test_type }}" == "new_branch" && "${{ matrix.should_create_branch }}" == "false" && "${{ steps.test.outputs.sha }}" == '' ]]; then
+          if [[ "${{ matrix.test_type }}" == "new_branch" && "${{ matrix.unexisting_branch }}" != "create" && "${{ steps.test.outputs.sha }}" == '' ]]; then
             echo "Expected failure from new branch not being created."
             exit 0
           fi
@@ -87,8 +88,12 @@ jobs:
           if [[ "$latest_commit_sha" == "$SHA" ]]; then
             echo "The commit was succesfully pushed to the target ref."
           else
-            echo "Failure to push the commit to the target ref."
-            exit 1
+            if [[ "${{ matrix.dry_run }}" == "dryrun" ]]; then
+              echo "Dry run mode: The commit was not pushed to the target ref, but this is expected."
+            else
+              echo "Failure to push the commit to the target ref."
+              exit 1
+            fi
           fi
 
           response=$(gh api \
@@ -105,7 +110,7 @@ jobs:
           fi
 
       - id: should_trigger
-        if: ${{ matrix.trigger_autodoc == true }}
+        if: ${{ matrix.trigger == 'autodoc' }}
         run: |
           echo "should_run=false" | tee -a $GITHUB_OUTPUT
             if git diff --name-only origin/main...HEAD | grep -qE 'action\.yaml|\.github/workflows/pr_action_docs\.yaml'; then
