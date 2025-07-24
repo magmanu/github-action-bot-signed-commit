@@ -10,7 +10,7 @@ permissions:
 jobs:
   test-action:
     runs-on: ubuntu-latest
-    name: "${{ matrix.test_type }} ${{ matrix.should_create_branch == 'true' && '/ create_ref' || '' }} ${{ matrix.trigger_autodoc == 'true' && '/ trigger_autodoc' || '' }}"
+    name: "${{ matrix.test_type }} / new_ref: ${{ matrix.should_create_branch }} / autodoc: ${{ matrix.trigger_autodoc }}"
     env:
       pr_branch: ${{ github.event.pull_request.head.ref }}
     strategy:
