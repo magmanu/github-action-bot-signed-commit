@@ -3,6 +3,12 @@ on:
   pull_request:
     branches:
       - main
+    paths-ignore:
+      - .github/workflows/cleanup.yaml
+      - .github/workflows/CODEOWNERS
+      - .github/workflows/dependabot.yaml
+      - .gitignore
+      - '**.md'
 
 permissions:
   contents: write
@@ -10,14 +16,23 @@ permissions:
 jobs:
   test-action:
     runs-on: ubuntu-latest
-    name: Commit with bot verified commit
+    name: "${{ matrix.dry_run }} ${{ matrix.test_type }} | ${{ matrix.unexisting_branch }} ${{ matrix.trigger }}"
     env:
-      branch: ${{ github.event.pull_request.head.ref }}
+      pr_branch: ${{ github.event.pull_request.head.ref }}
+    strategy:
+      max-parallel: 3 # ensure autodoc runs last, as it can change the last commit on the existing PR and kill the ci
+      fail-fast: false
+      matrix:
+        include:
+          - { test_type: existing_branch, ref_name: qa }
+          - { test_type: existing_branch, ref_name: qa, dry_run: dry_run }
+          - { test_type: new_branch, unexisting_branch: create } 
+          - { test_type: new_branch, trigger: autodoc }
 
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ env.branch }}
+          ref: ${{ env.pr_branch }}
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -27,31 +42,66 @@ jobs:
           echo "$(git diff --name-only origin/qa...HEAD)" > file_list.txt
           cat file_list.txt
 
+      - name: Generate branch name
+        if: ${{ matrix.test_type == 'new_branch' }}
+        id: generate_branch_name
+        run: |
+          echo "Generating new branch name..."
+          # Generate a unique branch name based on UTC timestamp
+          now=$(date -u +"%Y%m%d_%H%M%S")
+          echo "branch_name=qa-${now}" | tee -a $GITHUB_OUTPUT
+
       - name: Test action
         id: test
         uses: ./
+        continue-on-error: true
         with:
-          TARGET_REF: qa
+          TARGET_REF: ${{ matrix.ref_name || steps.generate_branch_name.outputs.branch_name }}
           FILE_LIST: file_list.txt
-
+          SHOULD_CREATE_NEW_BRANCH: ${{ matrix.unexisting_branch == 'create' }}
+          COMMIT_MESSAGE: "A custom message"
+          IS_DRY_RUN: ${{ matrix.dry_run == 'dry_run' }}
+      
+      - name: Handle failure
+        if: ${{ steps.test.outcome == 'failure' || matrix.dry_run == 'dry_run' }}
+        run: |
+          if [[ "${{ matrix.test_type }}" == "new_branch" && "${{ matrix.unexisting_branch }}" != "create" && "${{ steps.test.outputs.sha }}" == '' ]]; then
+            echo "Expected failure from new branch not being created."
+            exit 0
+          elif [[ "${{ steps.test.outcome }}" != 'failure' && "${{ matrix.dry_run }}" == 'dry_run' ]]; then
+            echo "Action failed as expected."
+            exit 0
+          fi
+          echo "Action failed in unexpected way."
+          exit 1
+      
       - name: Validate commit
+        if: ${{ steps.test.outcome != 'failure' }}
         env:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ steps.test.outputs.sha }}
-          TARGET_REF: qa
+          TARGET_REF: ${{ matrix.ref_name || steps.generate_branch_name.outputs.branch_name }}
         run: |
           # Cool off
-          sleep 10
+          sleep 5
 
           # Get the latest commit SHA from the target branch
           latest_commit_sha=$(gh api repos/${{ github.repository }}/git/ref/heads/$TARGET_REF --jq '.object.sha')
           echo "Latest commit SHA on $TARGET_REF: $latest_commit_sha"
           
           if [[ "$latest_commit_sha" == "$SHA" ]]; then
-            echo "The commit was succesfully pushed to the target ref."
+            echo "The target ref head was successfully moved to the latest commit."
+            if [[ "${{ matrix.dry_run }}" == "dry_run" ]]; then
+              echo "Dry run mode: The head should not have been moved."
+              exit 1
+            fi
           else
-            echo "Failure to push the commit to the target ref."
-            exit 1
+            if [[ "${{ matrix.dry_run }}" == "dry_run" ]]; then
+              echo "The target ref head was NOT moved to the latest commit, as expected."
+            else
+              echo "Failure to push the commit to the target ref."
+              exit 1
+            fi
           fi
 
           response=$(gh api \
@@ -68,6 +118,7 @@ jobs:
           fi
 
       - id: should_trigger
+        if: ${{ matrix.trigger == 'autodoc' }}
         run: |
           echo "should_run=false" | tee -a $GITHUB_OUTPUT
             if git diff --name-only origin/main...HEAD | grep -qE 'action\.yaml|\.github/workflows/pr_action_docs\.yaml'; then
@@ -79,5 +130,5 @@ jobs:
         uses: peter-evans/repository-dispatch@v3
         with:
           event-type: action_test
-          client-payload: '{"ref": "${{ env.branch }}"}'
+          client-payload: '{"ref": "${{ env.pr_branch }}"}'
 
