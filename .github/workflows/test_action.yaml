@@ -63,7 +63,8 @@ jobs:
             echo "Expected failure for new branch without creation. Skipping validation."
             exit 0
           fi
-          echo "Action failed as expected. Continuing with the workflow."
+          echo "Action failed in unexpected way."
+          exit 1
       
       - name: Validate commit
         if: ${{ steps.test.outcome != 'failure' }}

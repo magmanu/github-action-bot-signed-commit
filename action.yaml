@@ -66,6 +66,7 @@ runs:
         TARGET_OWNER: ${{ inputs.TARGET_OWNER }}
         TARGET_REPO: ${{ inputs.TARGET_REPO }}
         TARGET_REF: ${{ inputs.TARGET_REF }}
+        GH_TOKEN: ${{ github.token }}
       run: |
         #!/bin/bash
         set -euo pipefail
