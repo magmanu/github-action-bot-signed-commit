@@ -115,6 +115,7 @@ runs:
         TARGET_REF: ${{ inputs.TARGET_REF }}
         FILE_LIST: ${{ inputs.FILE_LIST }}
         IS_DRY_RUN: ${{ inputs.IS_DRY_RUN }}
+        COMMIT_MESSAGE: ${{ inputs.COMMIT_MESSAGE }}
       working-directory: ${{ inputs.WORKING_DIR }}
       run: |
         #!/bin/bash
@@ -232,7 +233,7 @@ runs:
 
             echo "Create commit with GH API (will be signed)"
             commit_json=$(jq -n \
-              --arg msg "Batch deploy $(date --utc +'%Y-%m-%dT%H:%M:%SZ')" \
+              --arg msg "$COMMIT_MESSAGE $(date --utc +'%Y-%m-%dT%H:%M:%SZ')" \
               --arg tree "$new_tree_sha" \
               --arg parent "$parent_commit" \
               '{message: $msg, tree: $tree, parents: [$parent]}')
