@@ -60,7 +60,8 @@ jobs:
           FILE_LIST: file_list.txt
           SHOULD_CREATE_NEW_BRANCH: ${{ matrix.unexisting_branch == 'create' }}
           COMMIT_MESSAGE: "A custom message"
-          IS_DRY_RUN: ${{ matrix.dry_run == 'dry_run' }}
+          # IS_DRY_RUN: ${{ matrix.dry_run == 'dry_run' }}
+          IS_DRY_RUN: 'false'
       
       - name: Handle failure
         if: ${{ steps.test.outcome == 'failure' || matrix.dry_run == 'dry_run' }}
