@@ -251,10 +251,16 @@ runs:
             echo "Dry run mode is enabled. The target branch head will not point to the new signed commit."
         else
             echo "Update the target branch with the new commit"
-            curl -s -H "Authorization: token $TOKEN" -X PATCH \
-              -d "{\"sha\":\"$parent_commit\"}" "$API/git/refs/heads/$TARGET_REF"
+            move_head=$(curl -s -H "Authorization: token $TOKEN" -X PATCH \
+              -d "{\"sha\":\"$parent_commit\"}" "$API/git/refs/heads/$TARGET_REF")
+            if [[ $(echo "$move_head" | jq -r '.ref // empty') == "" ]]; then
+                echo "Failed to move the target branch head."
+                echo "Response: $move_head"
+                exit 1
+            fi
+
             echo "Target branch successfully updated with the new signed commit."
         fi
 
-        echo "New signed commit SHA: $parent_commit"
-        echo "sha=$(echo $parent_commit)" >> $GITHUB_OUTPUT
+        echo "New signed commit SHA:"
+        echo "sha=$(echo $parent_commit)" | tee -a $GITHUB_OUTPUT
