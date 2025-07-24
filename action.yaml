@@ -203,6 +203,7 @@ runs:
             if [[ "${inputs.SHOULD_CREATE_NEW_BRANCH}" == "false" ]]; then
                 echo "You have prevented the creation of branches that don't exist. If you regret it, set SHOULD_CREATE_NEW_BRANCH to true"
                 exit 1
+            fi
         fi
 
         echo "Get the tree of the latest commit"
