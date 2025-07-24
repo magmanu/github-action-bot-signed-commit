@@ -10,7 +10,7 @@ permissions:
 jobs:
   test-action:
     runs-on: ubuntu-latest
-    name: Commit with bot verified commit
+    name: Test with ${{ matrix.test_type }}
     env:
       pr_branch: ${{ github.event.pull_request.head.ref }}
     strategy:
@@ -20,9 +20,7 @@ jobs:
         include:
           - { test_type: existing_branch, ref_name: qa, should_create_branch: true, trigger_autodoc: false } #should_create_branch defaults to true
           - { test_type: new_branch, should_create_branch: false, trigger_autodoc: false } 
-          - { test_type: new_branch, should_create_branch: true, trigger_autodoc: false }
-          - { trigger_autodoc: true }
-
+          - { test_type: new_branch, should_create_branch: true, trigger_autodoc: true }
 
     steps:
       - uses: actions/checkout@v4
@@ -43,7 +41,7 @@ jobs:
         run: |
           echo "Generating new branch name..."
           # Generate a unique branch name based on UTC timestamp
-          now=$(date -u +"%Y%m%d%H%M%S")
+          now=$(date -u +"%Y%m%d_%H%M%S")
           echo "branch_name=qa-${now}" | tee -a $GITHUB_OUTPUT
 
       - name: Test action
