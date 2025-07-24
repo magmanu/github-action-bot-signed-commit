@@ -60,6 +60,7 @@ jobs:
           FILE_LIST: file_list.txt
           SHOULD_CREATE_NEW_BRANCH: ${{ matrix.unexisting_branch == 'create' }}
           COMMIT_MESSAGE: "A custom message"
+          IS_DRY_RUN: ${{ matrix.dry_run == 'dryrun' }}
       
       - name: Handle failure
         if: ${{ steps.test.outcome == 'failure' }}
@@ -86,10 +87,14 @@ jobs:
           echo "Latest commit SHA on $TARGET_REF: $latest_commit_sha"
           
           if [[ "$latest_commit_sha" == "$SHA" ]]; then
-            echo "The commit was succesfully pushed to the target ref."
+            echo "The target ref head was successfully moved to the latest commit."
+            if [[ "${{ matrix.dry_run }}" == "dryrun" ]]; then
+              echo "Dry run mode: The head should not have been moved."
+              exit 1
+            fi
           else
             if [[ "${{ matrix.dry_run }}" == "dryrun" ]]; then
-              echo "Dry run mode: The commit was not pushed to the target ref, but this is expected."
+              echo "The target ref head was NOT moved to the latest commit."
             else
               echo "Failure to push the commit to the target ref."
               exit 1
