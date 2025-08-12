@@ -30,7 +30,7 @@ jobs:
           - { test_type: new_branch, trigger: autodoc }
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ env.pr_branch }}
           fetch-depth: 0
