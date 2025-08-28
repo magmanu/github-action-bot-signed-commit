@@ -34,10 +34,21 @@ inputs:
     type: string
     default: ${{ github.workspace }}
   IS_DRY_RUN:
-    description: "If set to true, the action will push the commits and leave them orphans (the head won't move.)"
+    description: "If set to true, the action will push the commits but leave them orphans (the head won't move.)"
     required: false
     type: boolean
     default: false
+  SHOULD_CREATE_NEW_BRANCH:
+    description: "If set to true, the action will create the target branch if it doesn't exist."
+    required: false
+    type: boolean
+    default: true
+  COMMIT_MESSAGE:
+    description: "The commit message to use for the signed commits. Your message will be suffixed with a UTC human-friendly timestamp."
+    required: false
+    type: string
+    default: "Signed commit"
+
 outputs:
   sha:
     description: "SHA of the verified commit"
@@ -46,6 +57,55 @@ outputs:
 runs:
   using: "composite"
   steps:
+    - name: Create branch if it doesn't exist
+      if: ${{ inputs.SHOULD_CREATE_NEW_BRANCH == 'true' }}
+      shell: bash
+      id: create_branch
+      env:
+        TOKEN: ${{ inputs.TOKEN }}
+        TARGET_OWNER: ${{ inputs.TARGET_OWNER }}
+        TARGET_REPO: ${{ inputs.TARGET_REPO }}
+        TARGET_REF: ${{ inputs.TARGET_REF }}
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        #!/bin/bash
+        set -euo pipefail
+
+        branch_exists=$(curl -s -H "Authorization: token $TOKEN" \
+          "https://api.github.com/repos/$TARGET_OWNER/$TARGET_REPO/git/refs/heads/$TARGET_REF" | jq -r '.ref // empty')
+
+        if [[ -n "$branch_exists" ]]; then
+          echo "Branch '$TARGET_REF' already exists."
+          exit 0
+        fi
+
+        DEFAULT_BRANCH=$(gh repo view --json defaultBranchRef | jq -r '.defaultBranchRef.name')
+
+        DEFAULT_BRANCH_SHA=$(gh api \
+          "repos/$TARGET_OWNER/$TARGET_REPO/git/ref/heads/$DEFAULT_BRANCH" \
+          --jq '.object.sha')
+
+        if [ -z "$DEFAULT_BRANCH_SHA" ]; then
+          echo "Error: Could not retrieve SHA of the default branch '$DEFAULT_BRANCH'."
+          exit 1
+        fi
+
+        echo "Creating remote branch '$TARGET_REF' from default branch '$DEFAULT_BRANCH')"
+
+        gh api \
+          --method POST \
+          -H "Accept: application/vnd.github+json" \
+          "/repos/$TARGET_OWNER/$TARGET_REPO/git/refs" \
+          -f "ref=refs/heads/$TARGET_REF" \
+          -f "sha=$DEFAULT_BRANCH_SHA"
+
+        if [ $? -eq 0 ]; then
+          echo "Remote branch '$TARGET_REF' created successfully on GitHub!"
+          echo "View it here: https://github.com/{owner}/{repo}/tree/$TARGET_REF"
+        else
+          echo "Failed to create remote branch '$TARGET_REF'."
+        fi
+
     - name: Sign and push commits
       shell: bash
       id: sign_and_push
@@ -56,6 +116,7 @@ runs:
         TARGET_REF: ${{ inputs.TARGET_REF }}
         FILE_LIST: ${{ inputs.FILE_LIST }}
         IS_DRY_RUN: ${{ inputs.IS_DRY_RUN }}
+        COMMIT_MESSAGE: ${{ inputs.COMMIT_MESSAGE }}
       working-directory: ${{ inputs.WORKING_DIR }}
       run: |
         #!/bin/bash
@@ -137,6 +198,13 @@ runs:
         latest_commit=$(curl -s -H "Authorization: token $TOKEN" \
             "$API/git/refs/heads/$TARGET_REF" \
             | jq -r '.object.sha')
+        if [[ -z "$latest_commit" ]]; then
+            echo "Failed to retrieve the latest commit SHA for branch '$TARGET_REF'."
+            if [[ "${inputs.SHOULD_CREATE_NEW_BRANCH}" == "false" ]]; then
+                echo "You have prevented the creation of branches that don't exist. If you regret it, set SHOULD_CREATE_NEW_BRANCH to true"
+                exit 1
+            fi
+        fi
 
         echo "Get the tree of the latest commit"
         base_tree=$(curl -s -H "Authorization: token $TOKEN" \
@@ -167,7 +235,7 @@ runs:
 
             echo "Create commit with GH API (will be signed)"
             commit_json=$(jq -n \
-              --arg msg "Batch deploy $(date --utc +'%Y-%m-%dT%H:%M:%SZ')" \
+              --arg msg "$COMMIT_MESSAGE $(date --utc +'%Y-%m-%dT%H:%M:%SZ')" \
               --arg tree "$new_tree_sha" \
               --arg parent "$parent_commit" \
               '{message: $msg, tree: $tree, parents: [$parent]}')
@@ -185,10 +253,16 @@ runs:
             echo "Dry run mode is enabled. The target branch head will not point to the new signed commit."
         else
             echo "Update the target branch with the new commit"
-            curl -s -H "Authorization: token $TOKEN" -X PATCH \
-              -d "{\"sha\":\"$parent_commit\"}" "$API/git/refs/heads/$TARGET_REF"
+            move_head=$(curl -s -H "Authorization: token $TOKEN" -X PATCH \
+              -d "{\"sha\":\"$parent_commit\"}" "$API/git/refs/heads/$TARGET_REF")
+            if [[ $(echo "$move_head" | jq -r '.ref // empty') == "" ]]; then
+                echo "Failed to move the target branch head."
+                echo "Response: $move_head"
+                exit 1
+            fi
+
             echo "Target branch successfully updated with the new signed commit."
         fi
 
-        echo "New signed commit SHA: $parent_commit"
-        echo "sha=$(echo $parent_commit)" >> $GITHUB_OUTPUT
+        echo "New signed commit SHA:"
+        echo "sha=$(echo $parent_commit)" | tee -a $GITHUB_OUTPUT
