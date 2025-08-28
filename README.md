@@ -57,7 +57,7 @@ jobs:
           echo "$(git diff --name-only origin/develop...HEAD)" > file_list.txt
 
       - name: Sign commits and push to develop branch
-        uses: magmanu/github-actions-bot-signed-commit@<sha> 
+        uses: magmanu/github-action-bot-signed-commit@<sha> 
         with:
           TARGET_REF: develop
           FILE_LIST: file_list.txt
@@ -127,9 +127,9 @@ jobs:
       # you will end up with multiple commits in your target branch.
       # In this case, your branch will point to the most recent commit 
       # once the process is finished.
-        uses: magmanu/github-actions-bot-signed-commit@<sha> 
+        uses: magmanu/github-action-bot-signed-commit@<sha> 
         with:
-          APP_TOKEN: ${{ steps.app-token.outputs.token }}
+          TOKEN: ${{ steps.app-token.outputs.token }}
           TARGET_REF: gh-pages
           FILE_LIST: .github/files.txt
           WORKING_DIR: deployment # the directory for "repo2"
