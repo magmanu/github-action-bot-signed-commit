@@ -9,8 +9,8 @@ Sign commits using GitHub App or GITHUB_TOKEN. Compatible with large and binary 
 | TOKEN | False | string | `${{ github.token }}` | If signing commits with Github Apps, provide the App token. Else, it defults to GITHUB_TOKEN. |
 | TARGET_OWNER | False | string | `${{ github.repository_owner }}` | The repository owner (user/org) |
 | TARGET_REPO | False | string | `${{ github.event.repository.name }}` | The repository where the signed commits will be pushed to. |
-| TARGET_REF | False | string |  | The branch where the signed commits will be pushed to. |
-| FILE_LIST | False | string |  | Path to a text file containing the list of file paths to be committed. E.g.: subdir/file_paths.txt |
+| TARGET_REF | False | string | `${{ github.head_ref || github.ref_name }}` | The branch where the signed commits will be pushed to. |
+| FILE_LIST | True | string |  | Path to a text file containing the list of file paths to be committed. E.g.: subdir/file_paths.txt |
 | WORKING_DIR | False | string | `${{ github.workspace }}` | The working directory where the action will run. |
 | IS_DRY_RUN | False | boolean |  | If set to true, the action will push the commits but leave them orphans (the head won't move.) |
 | SHOULD_CREATE_NEW_BRANCH | False | boolean | `True` | If set to true, the action will create the target branch if it doesn't exist. |
