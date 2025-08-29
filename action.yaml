@@ -24,9 +24,10 @@ inputs:
     description: "The branch where the signed commits will be pushed to."
     required: false
     type: string
+    default: ${{ github.head_ref || github.ref_name }}
   FILE_LIST:
     description: "Path to a text file containing the list of file paths to be committed. E.g.: subdir/file_paths.txt"
-    required: false
+    required: true
     type: string
   WORKING_DIR:
     description: "The working directory where the action will run."
