@@ -12,7 +12,9 @@ Sign commits using GitHub App or GITHUB_TOKEN. Compatible with large and binary 
 | TARGET_REF | False | string |  | The branch where the signed commits will be pushed to. |
 | FILE_LIST | False | string |  | Path to a text file containing the list of file paths to be committed. E.g.: subdir/file_paths.txt |
 | WORKING_DIR | False | string | `${{ github.workspace }}` | The working directory where the action will run. |
-| IS_DRY_RUN | False | boolean |  | If set to true, the action will push the commits and leave them orphans (the head won't move.) |
+| IS_DRY_RUN | False | boolean |  | If set to true, the action will push the commits but leave them orphans (the head won't move.) |
+| SHOULD_CREATE_NEW_BRANCH | False | boolean | `True` | If set to true, the action will create the target branch if it doesn't exist. |
+| COMMIT_MESSAGE | False | string | `Signed commit` | The commit message to use for the signed commits. Your message will be suffixed with a UTC human-friendly timestamp. |
 
 # outputs
 | Title | Description | Value |
