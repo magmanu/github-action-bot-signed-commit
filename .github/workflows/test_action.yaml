@@ -30,7 +30,7 @@ jobs:
           - { test_type: new_branch, trigger: autodoc }
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           ref: ${{ env.pr_branch }}
           fetch-depth: 0
@@ -127,7 +127,7 @@ jobs:
           
       - name: Trigger workflow
         if: ${{ steps.should_trigger.outputs.should_run == 'true' }}
-        uses: peter-evans/repository-dispatch@v4
+        uses: peter-evans/repository-dispatch@v3
         with:
           event-type: action_test
           client-payload: '{"ref": "${{ env.pr_branch }}"}'
