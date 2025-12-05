@@ -190,6 +190,7 @@ runs:
         batches=$(( (total_items + batch_size - 1) / batch_size ))
 
         echo "Get the latest commit"
+        sleep 2
         latest_commit=$(curl -s -H "Authorization: token $TOKEN" \
             "$API/git/refs/heads/$TARGET_REF" \
             | jq -r '.object.sha')
@@ -202,6 +203,7 @@ runs:
         fi
 
         echo "Get the tree of the latest commit"
+        sleep 2
         base_tree=$(curl -s -H "Authorization: token $TOKEN" \
             "$API/git/commits/$latest_commit" \
             | jq -r '.tree.sha')
@@ -209,6 +211,7 @@ runs:
         parent_commit="$latest_commit"
 
         for ((batch=0; batch<batches; batch++)); do
+            sleep 2
             echo "::group::Performing signed commit. Batch $((batch + 1)) of $batches"
             start=$((batch * batch_size))
             end=$((start + batch_size - 1))
@@ -224,11 +227,13 @@ runs:
               '{base_tree: $base_tree, tree: $tree_items[0]}')
 
             echo "Create new tree with GH API" 
+            sleep 2
             new_tree_sha=$(echo "$tree_json" | \
               curl -s -H "Authorization: token $TOKEN" -H "Accept: application/vnd.github+json" \
                 -X POST "$API/git/trees" --data-binary @- | jq -r '.sha')
 
             echo "Create commit with GH API (will be signed)"
+            sleep 2
             commit_json=$(jq -n \
               --arg msg "$COMMIT_MESSAGE $(date --utc +'%Y-%m-%dT%H:%M:%SZ')" \
               --arg tree "$new_tree_sha" \
@@ -248,6 +253,7 @@ runs:
             echo "Dry run mode is enabled. The target branch head will not point to the new signed commit."
         else
             echo "Update the target branch with the new commit"
+            sleep 2
             move_head=$(curl -s -H "Authorization: token $TOKEN" -X PATCH \
               -d "{\"sha\":\"$parent_commit\"}" "$API/git/refs/heads/$TARGET_REF")
             if [[ $(echo "$move_head" | jq -r '.ref // empty') == "" ]]; then
