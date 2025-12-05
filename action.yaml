@@ -44,6 +44,11 @@ inputs:
     required: false
     type: string
     default: "Signed commit"
+  WORKING_DIR:
+    description: "The working directory where the action will run."
+    required: false
+    type: string
+    default: ${{ github.workspace }}
 
 outputs:
   sha:
