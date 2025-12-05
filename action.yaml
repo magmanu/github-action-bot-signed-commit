@@ -26,7 +26,7 @@ inputs:
     type: string
     default: ${{ github.head_ref || github.ref_name }}
   FILE_LIST:
-    description: "Path to a text file containing the list of file paths to be committed. E.g.: subdir/file_paths.txt"
+    description: "Path to a text file containing the list of file paths to be committed. Can be absolute or relative to the working directory."
     required: true
     type: string
   IS_DRY_RUN:
