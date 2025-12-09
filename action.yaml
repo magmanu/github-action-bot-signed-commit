@@ -162,7 +162,14 @@ runs:
                   -H "Authorization: token $TOKEN" \
                   -H "Accept: application/vnd.github+json" \
                   "$API/git/blobs" \
-                  -d @- | jq -r '.sha')
+                  -d @-)
+            if [[ $(echo "$response" | jq -r '.sha // empty') == "" ]]; then
+              echo "Error creating blob for $full_path:"
+              echo "$response"
+              exit 1
+            fi
+            
+            blob_sha=$(echo "$response" | jq -r '.sha')
             sleep 5
 
             tree_entry=$(jq -n \
