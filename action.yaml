@@ -139,10 +139,7 @@ runs:
         echo "[" > "$tree_items_file"
         first=1
 
-          if [[ ! -d "$WORKING_DIR" ]]; then
-            mkdir -p "$WORKING_DIR"
-          fi
-          cd "$WORKING_DIR"
+        cd "$WORKING_DIR"
         
         while IFS= read -r file_path; do
           
@@ -165,14 +162,8 @@ runs:
                   -H "Authorization: token $TOKEN" \
                   -H "Accept: application/vnd.github+json" \
                   "$API/git/blobs" \
-                  -d @-)
-            if [[ $(echo "$response" | jq -r '.sha // empty') == "" ]]; then
-              echo "Error creating blob for $file_path:"
-              echo "$response"
-              exit 1
-            fi
-
-            blob_sha=$(echo "$response" | jq -r '.sha')
+                  -d @- | jq -r '.sha')
+            echo "Blob sha: $blob_sha"
             sleep 5
 
             tree_entry=$(jq -n \
@@ -183,15 +174,15 @@ runs:
                 '{path: $path, mode: $mode, type: $type, sha: $sha}')
           else
             echo "Processing text file: $file_path"
-            temp_content=$(mktemp)
-            cat "$file_path" > "$temp_content"
+            temp_tree_content=$(mktemp)
+            cat "$file_path" > "$temp_tree_content"
             tree_entry=$(jq -n \
                 --arg path "$file_path" \
                 --arg mode "100644" \
                 --arg type "blob" \
-                --rawfile content "$temp_content" \
+                --rawfile content "$temp_tree_content" \
                 '{path: $path, mode: $mode, type: $type, content: $content}')
-            rm -f "$temp_content"
+            rm -f "$temp_tree_content"
           fi
 
           if [ $first -eq 1 ]; then
@@ -212,8 +203,9 @@ runs:
         latest_commit=$(curl -s -H "Authorization: token $TOKEN" \
             "$API/git/refs/heads/$TARGET_REF" \
             | jq -r '.object.sha')
-        echo "Latest commit SHA (will become parent commit): $latest_commit"
+        echo "Latest commit SHA: $latest_commit"
         sleep 5
+
         if [[ -z "$latest_commit" ]]; then
             echo "Failed to retrieve the latest commit SHA for branch '$TARGET_REF'."
             if [[ "${inputs.SHOULD_CREATE_NEW_BRANCH}" == "false" ]]; then
@@ -252,7 +244,7 @@ runs:
             echo "New tree sha: $new_tree"
             sleep 5
 
-            echo "Create commit with GH API (will be signed), Sleep 5 to avoid spamming the API"
+            echo "Create commit with GH API (will be signed)"
             commit_json=$(jq -n \
               --arg msg "$COMMIT_MESSAGE $(date --utc +'%Y-%m-%dT%H:%M:%SZ')" \
               --arg tree "$new_tree" \
