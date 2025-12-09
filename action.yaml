@@ -139,12 +139,14 @@ runs:
         echo "[" > "$tree_items_file"
         first=1
 
-        cd "$WORKING_DIR"
-        
+        if [[ "$(pwd)" != "$WORKING_DIR" ]]; then
+          cd "$WORKING_DIR"
+        fi
+
         while IFS= read -r file_path; do
           
           if [[ ! -f "$file_path" ]]; then
-            echo "Listed file $file_path not found on path $file_path"
+            echo "Listed file $file_path not found."
             exit 1
           fi
 
@@ -163,8 +165,7 @@ runs:
                   -H "Accept: application/vnd.github+json" \
                   "$API/git/blobs" \
                   -d @- | jq -r '.sha')
-            echo "Blob sha: $blob_sha"
-            sleep 5
+            echo "Binary content blob sha: $blob_sha"
 
             tree_entry=$(jq -n \
                 --arg path "$file_path" \
@@ -204,7 +205,6 @@ runs:
             "$API/git/refs/heads/$TARGET_REF" \
             | jq -r '.object.sha')
         echo "Latest commit SHA: $latest_commit"
-        sleep 5
 
         if [[ -z "$latest_commit" ]]; then
             echo "Failed to retrieve the latest commit SHA for branch '$TARGET_REF'."
@@ -218,7 +218,6 @@ runs:
         base_tree=$(curl -s -H "Authorization: token $TOKEN" \
             "$API/git/commits/$latest_commit"| jq -r '.tree.sha')
         echo "Base tree SHA: $base_tree"
-        sleep 5
 
         parent_commit="$latest_commit"
 
@@ -242,7 +241,6 @@ runs:
               curl -s -H "Authorization: token $TOKEN" -H "Accept: application/vnd.github+json" \
                 -X POST "$API/git/trees" --data-binary @- | jq -r '.sha')
             echo "New tree sha: $new_tree"
-            sleep 5
 
             echo "Create commit with GH API (will be signed)"
             commit_json=$(jq -n \
@@ -255,7 +253,6 @@ runs:
               curl -s -H "Authorization: token $TOKEN" -H "Accept: application/vnd.github+json" \
                 -X POST "$API/git/commits" --data-binary @- | jq -r '.sha')
             echo "New parent commit sha: $parent_commit"
-            sleep 5
 
             echo "Update base_tree for next batch"
             base_tree="$new_tree"
