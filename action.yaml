@@ -237,9 +237,15 @@ runs:
               '{base_tree: $base_tree, tree: $tree_items[0]}')
 
             echo "Create new tree with GH API" 
-            new_tree=$(echo "$tree_json" | \
-              curl -s -H "Authorization: token $TOKEN" -H "Accept: application/vnd.github+json" \
-                -X POST "$API/git/trees" --data-binary @- | jq -r '.sha')
+            response=$(echo "$tree_json" | \
+                  curl -s -H "Authorization: token $TOKEN" -H "Accept: application/vnd.github+json" \
+              -X POST "$API/git/trees" --data-binary @-)
+            new_tree=$(echo "$response" | jq -r '.sha // empty')
+            if [[ -z "$new_tree" ]]; then
+                echo "Failed to create new tree. Response:"
+                echo "$response"
+                exit 1
+            fi
             echo "New tree sha: $new_tree"
 
             echo "Create commit with GH API (will be signed)"
