@@ -261,9 +261,12 @@ runs:
               --arg tree "$new_tree" \
               --arg parent "$parent_commit" \
               '{message: $msg, tree: $tree, parents: [$parent]}')
+            # parent_commit=$(echo "$commit_json" | \
+            #   curl -s -H "Authorization: token $TOKEN" -H "Accept: application/vnd.github+json" \
+            #     -X POST "$API/git/commits" --data-binary @- | jq -r '.sha')
             parent_commit=$(echo "$commit_json" | \
               curl -s -H "Authorization: token $TOKEN" -H "Accept: application/vnd.github+json" \
-                -X POST "$API/git/commits" --data-binary @- | jq -r '.sha')
+                -X POST "$API/git/commits" --data-binary @- )
             echo "New parent commit: $parent_commit"
             sleep 5
 
