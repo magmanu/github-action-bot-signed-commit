@@ -288,5 +288,5 @@ runs:
             echo "Target branch successfully updated with the new signed commit."
         fi
 
-        echo "New signed commit SHA:"
+        echo "New signed commit output:"
         echo "sha=$(echo $parent_commit)" | tee -a $GITHUB_OUTPUT
