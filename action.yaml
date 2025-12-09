@@ -139,24 +139,27 @@ runs:
         echo "[" > "$tree_items_file"
         first=1
 
+          if [[ ! -d "$WORKING_DIR" ]]; then
+            mkdir -p "$WORKING_DIR"
+          fi
+          cd "$WORKING_DIR"
+        
         while IFS= read -r file_path; do
           
-          full_path="${WORKING_DIR}/${file_path}"
-          
-          if [[ ! -f "$full_path" ]]; then
-            echo "Listed file $file_path not found on path $full_path"
+          if [[ ! -f "$file_path" ]]; then
+            echo "Listed file $file_path not found on path $file_path"
             exit 1
           fi
 
-          mime_type=$(file --mime-type -b "$full_path")
+          mime_type=$(file --mime-type -b "$file_path")
           echo "::debug::MIME type: $mime_type"
 
           is_binary="false"
           [[ ! "$mime_type" =~ text ]] && is_binary="true"
 
           if [[ "$is_binary" == "true" ]]; then
-            echo "Processing binary file: $full_path"
-            blob_sha=$(base64 -w 0 "$full_path" \
+            echo "Processing binary file: $file_path"
+            blob_sha=$(base64 -w 0 "$file_path" \
               | jq -Rs --arg encoding "base64" '{content: ., encoding: $encoding}' \
               | curl -s -X POST \
                   -H "Authorization: token $TOKEN" \
@@ -164,7 +167,7 @@ runs:
                   "$API/git/blobs" \
                   -d @-)
             if [[ $(echo "$response" | jq -r '.sha // empty') == "" ]]; then
-              echo "Error creating blob for $full_path:"
+              echo "Error creating blob for $file_path:"
               echo "$response"
               exit 1
             fi
@@ -173,17 +176,17 @@ runs:
             sleep 5
 
             tree_entry=$(jq -n \
-                --arg path "$full_path" \
+                --arg path "$file_path" \
                 --arg mode "100644" \
                 --arg type "blob" \
                 --arg sha "$blob_sha" \
                 '{path: $path, mode: $mode, type: $type, sha: $sha}')
           else
-            echo "Processing text file: $full_path"
+            echo "Processing text file: $file_path"
             temp_content=$(mktemp)
-            cat "$full_path" > "$temp_content"
+            cat "$file_path" > "$temp_content"
             tree_entry=$(jq -n \
-                --arg path "$full_path" \
+                --arg path "$file_path" \
                 --arg mode "100644" \
                 --arg type "blob" \
                 --rawfile content "$temp_content" \
