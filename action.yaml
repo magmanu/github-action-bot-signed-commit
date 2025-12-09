@@ -163,6 +163,7 @@ runs:
                   -H "Accept: application/vnd.github+json" \
                   "$API/git/blobs" \
                   -d @- | jq -r '.sha')
+            sleep 5
 
             tree_entry=$(jq -n \
                 --arg path "$full_path" \
@@ -198,11 +199,11 @@ runs:
         batches=$(( (total_items + batch_size - 1) / batch_size ))
 
         echo "Get the latest commit"
-        sleep 2
         latest_commit=$(curl -s -H "Authorization: token $TOKEN" \
             "$API/git/refs/heads/$TARGET_REF" \
             | jq -r '.object.sha')
-        echo "Latest commit SHA: $latest_commit"
+        echo "Latest commit SHA (will become parent commit): $latest_commit"
+        sleep 5
         if [[ -z "$latest_commit" ]]; then
             echo "Failed to retrieve the latest commit SHA for branch '$TARGET_REF'."
             if [[ "${inputs.SHOULD_CREATE_NEW_BRANCH}" == "false" ]]; then
@@ -213,13 +214,13 @@ runs:
 
         echo "Get the tree of the latest commit"
         base_tree=$(curl -s -H "Authorization: token $TOKEN" \
-            "$API/git/commits/$latest_commit")
-        base_tree_sha=$(echo "$base_tree" | jq -r '.tree.sha')
-        echo "Base tree SHA: $base_tree_sha"
+            "$API/git/commits/$latest_commit"| jq -r '.tree.sha')
+        echo "Base tree SHA: $base_tree"
+        sleep 5
+
         parent_commit="$latest_commit"
 
         for ((batch=0; batch<batches; batch++)); do
-            sleep 2
             echo "::group::Performing signed commit. Batch $((batch + 1)) of $batches"
             start=$((batch * batch_size))
             end=$((start + batch_size - 1))
@@ -230,33 +231,31 @@ runs:
 
             echo "Building tree"
             tree_json=$(jq -n \
-              --arg base_tree "$base_tree_sha" \
+              --arg base_tree "$base_tree" \
               --slurpfile tree_items "$batch_file" \
-              '{base_tree: $base_tree_sha, tree: $tree_items[0]}')
+              '{base_tree: $base_tree, tree: $tree_items[0]}')
 
             echo "Create new tree with GH API" 
-            sleep 2
             new_tree=$(echo "$tree_json" | \
               curl -s -H "Authorization: token $TOKEN" -H "Accept: application/vnd.github+json" \
-                -X POST "$API/git/trees" --data-binary @-)
-            echo "New tree response: $new_tree"
-            new_tree_sha=$(echo "$new_tree_sha" | jq -r '.sha')
+                -X POST "$API/git/trees" --data-binary @- | jq -r '.sha')
+            echo "New tree sha: $new_tree"
+            sleep 5
 
-            echo "Create commit with GH API (will be signed), Sleep 30 to avoid spamming the API"
-            sleep 30
+            echo "Create commit with GH API (will be signed), Sleep 5 to avoid spamming the API"
             commit_json=$(jq -n \
               --arg msg "$COMMIT_MESSAGE $(date --utc +'%Y-%m-%dT%H:%M:%SZ')" \
-              --arg tree "$new_tree_sha" \
+              --arg tree "$new_tree" \
               --arg parent "$parent_commit" \
               '{message: $msg, tree: $tree, parents: [$parent]}')
             parent_commit=$(echo "$commit_json" | \
               curl -s -H "Authorization: token $TOKEN" -H "Accept: application/vnd.github+json" \
-                -X POST "$API/git/commits" --data-binary @-)
-            echo "New commit response: $parent_commit"
-            parent_commit_sha=$(echo "$parent_commit" | jq -r '.sha')
+                -X POST "$API/git/commits" --data-binary @- | jq -r '.sha')
+            echo "New parent commit: $parent_commit"
+            sleep 5
 
             echo "Update base_tree for next batch"
-            base_tree_sha="$new_tree_sha"
+            base_tree="$new_tree"
             rm "$batch_file"
             echo "::endgroup::"
         done
@@ -267,7 +266,6 @@ runs:
             echo "Update the target branch with the new commit"
             echo "Parent commit sha: $parent_commit_sha"
 
-            sleep 2
             move_head=$(curl -s -H "Authorization: token $TOKEN" -X PATCH \
               -d "{\"sha\":\"$parent_commit_sha\"}" "$API/git/refs/heads/$TARGET_REF")
             if [[ $(echo "$move_head" | jq -r '.ref // empty') == "" ]]; then
