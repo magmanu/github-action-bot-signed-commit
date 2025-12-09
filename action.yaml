@@ -168,7 +168,7 @@ runs:
               echo "$response"
               exit 1
             fi
-            
+
             blob_sha=$(echo "$response" | jq -r '.sha')
             sleep 5
 
@@ -241,11 +241,14 @@ runs:
               --arg base_tree "$base_tree" \
               --slurpfile tree_items "$batch_file" \
               '{base_tree: $base_tree, tree: $tree_items[0]}')
+            
+            ## TODO: Remove next echo
+            echo "::debug::Tree JSON: $tree_json"
 
             echo "Create new tree with GH API" 
             new_tree=$(echo "$tree_json" | \
               curl -s -H "Authorization: token $TOKEN" -H "Accept: application/vnd.github+json" \
-                -X POST "$API/git/trees" --data-binary @- | jq -r '.sha')
+                -X POST "$API/git/trees" --data-binary @-)
             echo "New tree sha: $new_tree"
             sleep 5
 
