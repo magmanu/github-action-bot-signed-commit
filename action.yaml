@@ -202,6 +202,7 @@ runs:
         latest_commit=$(curl -s -H "Authorization: token $TOKEN" \
             "$API/git/refs/heads/$TARGET_REF" \
             | jq -r '.object.sha')
+        echo "Latest commit SHA: $latest_commit"
         if [[ -z "$latest_commit" ]]; then
             echo "Failed to retrieve the latest commit SHA for branch '$TARGET_REF'."
             if [[ "${inputs.SHOULD_CREATE_NEW_BRANCH}" == "false" ]]; then
@@ -211,11 +212,10 @@ runs:
         fi
 
         echo "Get the tree of the latest commit"
-        sleep 2
         base_tree=$(curl -s -H "Authorization: token $TOKEN" \
-            "$API/git/commits/$latest_commit" \
-            | jq -r '.tree.sha')
-
+            "$API/git/commits/$latest_commit")
+        base_tree_sha=$(echo "$base_tree" | jq -r '.tree.sha')
+        echo "Base tree SHA: $base_tree_sha"
         parent_commit="$latest_commit"
 
         for ((batch=0; batch<batches; batch++)); do
@@ -230,15 +230,17 @@ runs:
 
             echo "Building tree"
             tree_json=$(jq -n \
-              --arg base_tree "$base_tree" \
+              --arg base_tree "$base_tree_sha" \
               --slurpfile tree_items "$batch_file" \
-              '{base_tree: $base_tree, tree: $tree_items[0]}')
+              '{base_tree: $base_tree_sha, tree: $tree_items[0]}')
 
             echo "Create new tree with GH API" 
             sleep 2
-            new_tree_sha=$(echo "$tree_json" | \
+            new_tree=$(echo "$tree_json" | \
               curl -s -H "Authorization: token $TOKEN" -H "Accept: application/vnd.github+json" \
-                -X POST "$API/git/trees" --data-binary @- | jq -r '.sha')
+                -X POST "$API/git/trees" --data-binary @-)
+            echo "New tree response: $new_tree"
+            new_tree_sha=$(echo "$new_tree_sha" | jq -r '.sha')
 
             echo "Create commit with GH API (will be signed), Sleep 30 to avoid spamming the API"
             sleep 30
@@ -254,7 +256,7 @@ runs:
             parent_commit_sha=$(echo "$parent_commit" | jq -r '.sha')
 
             echo "Update base_tree for next batch"
-            base_tree="$new_tree_sha"
+            base_tree_sha="$new_tree_sha"
             rm "$batch_file"
             echo "::endgroup::"
         done
