@@ -118,6 +118,7 @@ runs:
         FILE_LIST: ${{ inputs.FILE_LIST }}
         IS_DRY_RUN: ${{ inputs.IS_DRY_RUN }}
         COMMIT_MESSAGE: ${{ inputs.COMMIT_MESSAGE }}
+        WORKING_DIR: ${{ inputs.WORKING_DIR }}
       run: |
         #!/bin/bash
         set -euo pipefail
@@ -139,9 +140,11 @@ runs:
         first=1
 
         while IFS= read -r file_path; do
-
-          if [[ ! -f "$file_path" ]]; then
-            echo "File not found: $file_path"
+          
+          full_path="${WORKING_DIR}/${file_path}"
+          
+          if [[ ! -f "$full_path" ]]; then
+            echo "Listed file $file_path not found on path $full_path"
             exit 1
           fi
 
@@ -259,6 +262,7 @@ runs:
         else
             echo "Update the target branch with the new commit"
             echo "Parent commit: $parent_commit"
+
             sleep 2
             move_head=$(curl -s -H "Authorization: token $TOKEN" -X PATCH \
               -d "{\"sha\":\"$parent_commit\"}" "$API/git/refs/heads/$TARGET_REF")
