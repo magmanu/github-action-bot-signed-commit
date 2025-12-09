@@ -148,15 +148,15 @@ runs:
             exit 1
           fi
 
-          mime_type=$(file --mime-type -b "$file_path")
+          mime_type=$(file --mime-type -b "$full_path")
           echo "::debug::MIME type: $mime_type"
 
           is_binary="false"
           [[ ! "$mime_type" =~ text ]] && is_binary="true"
 
           if [[ "$is_binary" == "true" ]]; then
-            echo "Processing binary file: $file_path"
-            blob_sha=$(base64 -w 0 "$file_path" \
+            echo "Processing binary file: $full_path"
+            blob_sha=$(base64 -w 0 "$full_path" \
               | jq -Rs --arg encoding "base64" '{content: ., encoding: $encoding}' \
               | curl -s -X POST \
                   -H "Authorization: token $TOKEN" \
@@ -165,17 +165,17 @@ runs:
                   -d @- | jq -r '.sha')
 
             tree_entry=$(jq -n \
-                --arg path "$file_path" \
+                --arg path "$full_path" \
                 --arg mode "100644" \
                 --arg type "blob" \
                 --arg sha "$blob_sha" \
                 '{path: $path, mode: $mode, type: $type, sha: $sha}')
           else
-            echo "Processing text file: $file_path"
+            echo "Processing text file: $full_path"
             temp_content=$(mktemp)
-            cat "$file_path" > "$temp_content"
+            cat "$full_path" > "$temp_content"
             tree_entry=$(jq -n \
-                --arg path "$file_path" \
+                --arg path "$full_path" \
                 --arg mode "100644" \
                 --arg type "blob" \
                 --rawfile content "$temp_content" \
