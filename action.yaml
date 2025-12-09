@@ -244,14 +244,11 @@ runs:
               --arg base_tree "$base_tree" \
               --slurpfile tree_items "$batch_file" \
               '{base_tree: $base_tree, tree: $tree_items[0]}')
-            
-            ## TODO: Remove next echo
-            echo "::debug::Tree JSON: $tree_json"
 
             echo "Create new tree with GH API" 
             new_tree=$(echo "$tree_json" | \
               curl -s -H "Authorization: token $TOKEN" -H "Accept: application/vnd.github+json" \
-                -X POST "$API/git/trees" --data-binary @-)
+                -X POST "$API/git/trees" --data-binary @- | jq -r '.sha')
             echo "New tree sha: $new_tree"
             sleep 5
 
@@ -261,6 +258,7 @@ runs:
               --arg tree "$new_tree" \
               --arg parent "$parent_commit" \
               '{message: $msg, tree: $tree, parents: [$parent]}')
+
             # parent_commit=$(echo "$commit_json" | \
             #   curl -s -H "Authorization: token $TOKEN" -H "Accept: application/vnd.github+json" \
             #     -X POST "$API/git/commits" --data-binary @- | jq -r '.sha')
