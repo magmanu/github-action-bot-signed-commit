@@ -240,8 +240,8 @@ runs:
               curl -s -H "Authorization: token $TOKEN" -H "Accept: application/vnd.github+json" \
                 -X POST "$API/git/trees" --data-binary @- | jq -r '.sha')
 
-            echo "Create commit with GH API (will be signed)"
-            sleep 2
+            echo "Create commit with GH API (will be signed), Sleep 30 to avoid spamming the API"
+            sleep 30
             commit_json=$(jq -n \
               --arg msg "$COMMIT_MESSAGE $(date --utc +'%Y-%m-%dT%H:%M:%SZ')" \
               --arg tree "$new_tree_sha" \
@@ -249,7 +249,9 @@ runs:
               '{message: $msg, tree: $tree, parents: [$parent]}')
             parent_commit=$(echo "$commit_json" | \
               curl -s -H "Authorization: token $TOKEN" -H "Accept: application/vnd.github+json" \
-                -X POST "$API/git/commits" --data-binary @- | jq -r '.sha')
+                -X POST "$API/git/commits" --data-binary @-)
+            echo "New commit response: $parent_commit"
+            parent_commit_sha=$(echo "$parent_commit" | jq -r '.sha')
 
             echo "Update base_tree for next batch"
             base_tree="$new_tree_sha"
@@ -261,13 +263,13 @@ runs:
             echo "Dry run mode is enabled. The target branch head will not point to the new signed commit."
         else
             echo "Update the target branch with the new commit"
-            echo "Parent commit: $parent_commit"
+            echo "Parent commit sha: $parent_commit_sha"
 
             sleep 2
             move_head=$(curl -s -H "Authorization: token $TOKEN" -X PATCH \
-              -d "{\"sha\":\"$parent_commit\"}" "$API/git/refs/heads/$TARGET_REF")
+              -d "{\"sha\":\"$parent_commit_sha\"}" "$API/git/refs/heads/$TARGET_REF")
             if [[ $(echo "$move_head" | jq -r '.ref // empty') == "" ]]; then
-                echo "Failed to move the target branch head. Parent commit SHA: $parent_commit"
+                echo "Failed to move the target branch head. Parent commit SHA: $parent_commit_sha"
                 echo "Response: $move_head"
                 exit 1
             fi
