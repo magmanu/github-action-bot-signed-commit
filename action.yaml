@@ -135,19 +135,32 @@ runs:
         cat "$FILE_LIST"
         echo "::endgroup::"
 
-        tree_items_file=$(mktemp)
-        echo "[" > "$tree_items_file"
-        first=1
+        max_batch_size=$((5 * 1024 * 1024)) # 5 MB in bytes
+        batch_files=()
+        batch_size=0
+        batch_file=$(mktemp)
+        echo "[" > "$batch_file"
+        first_in_batch=1
 
         if [[ "$(pwd)" != "$WORKING_DIR" ]]; then
           cd "$WORKING_DIR"
         fi
 
         while IFS= read -r file_path; do
-          
           if [[ ! -f "$file_path" ]]; then
             echo "Listed file $file_path not found."
             exit 1
+          fi
+
+          file_size=$(stat -c %s "$file_path")
+          # If adding this file would exceed the batch size, start a new batch
+          if (( batch_size + file_size > max_batch_size )) && (( batch_size > 0 )); then
+            echo "]" >> "$batch_file"
+            batch_files+=("$batch_file")
+            batch_file=$(mktemp)
+            echo "[" > "$batch_file"
+            first_in_batch=1
+            batch_size=0
           fi
 
           mime_type=$(file --mime-type -b "$file_path")
@@ -166,6 +179,7 @@ runs:
                   "$API/git/blobs" \
                   -d @- | jq -r '.sha')
             echo "Binary content blob sha: $blob_sha"
+            sleep 5
 
             tree_entry=$(jq -n \
                 --arg path "$file_path" \
@@ -186,19 +200,21 @@ runs:
             rm -f "$temp_tree_content"
           fi
 
-          if [ $first -eq 1 ]; then
-            echo "$tree_entry" >> "$tree_items_file"
-            first=0
+          if (( first_in_batch == 1 )); then
+            echo "$tree_entry" >> "$batch_file"
+            first_in_batch=0
           else
-            echo ",$tree_entry" >> "$tree_items_file"
+            echo ",$tree_entry" >> "$batch_file"
           fi
+
+          batch_size=$((batch_size + file_size))
         done < "$FILE_LIST"
 
-        echo "]" >> "$tree_items_file"
-
-        total_items=$(jq length "$tree_items_file")
-        batch_size=10
-        batches=$(( (total_items + batch_size - 1) / batch_size ))
+        # Finalize last batch
+        if (( batch_size > 0 )); then
+          echo "]" >> "$batch_file"
+          batch_files+=("$batch_file")
+        fi
 
         echo "Get the latest commit"
         latest_commit=$(curl -s -H "Authorization: token $TOKEN" \
@@ -221,22 +237,13 @@ runs:
 
         parent_commit="$latest_commit"
 
-        for ((batch=0; batch<batches; batch++)); do
-            echo "::group::Performing signed commit. Batch $((batch + 1)) of $batches"
-            start=$((batch * batch_size))
-            end=$((start + batch_size - 1))
-            batch_file=$(mktemp)
-
-            # Extract a batch of tree items
-            jq ".[$start:$((end+1))]" "$tree_items_file" > "$batch_file"
-
-            echo "Building tree. Base tree: $base_tree. Items in this batch: $(jq length "$batch_file")"
+        for batch_file in "${batch_files[@]}"; do
+            echo "Building tree. Items in this batch: $(jq length "$batch_file")"
             tree_json=$(jq -n \
               --arg base_tree "$base_tree" \
               --slurpfile tree_items "$batch_file" \
               '{base_tree: $base_tree, tree: $tree_items[0]}')
 
-            echo "Debug tree sha: $(tree_json | jq -r '.sha')"
             echo "Create new tree with GH API" 
             response=$(echo "$tree_json" | \
                   curl -s -H "Authorization: token $TOKEN" -H "Accept: application/vnd.github+json" \
