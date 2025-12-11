@@ -236,6 +236,7 @@ runs:
               --slurpfile tree_items "$batch_file" \
               '{base_tree: $base_tree, tree: $tree_items[0]}')
 
+            echo "Debug tree sha: $(tree_json | jq -r '.sha // empty')"
             echo "Create new tree with GH API" 
             response=$(echo "$tree_json" | \
                   curl -s -H "Authorization: token $TOKEN" -H "Accept: application/vnd.github+json" \
