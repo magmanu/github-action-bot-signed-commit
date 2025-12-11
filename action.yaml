@@ -135,7 +135,7 @@ runs:
         cat "$FILE_LIST"
         echo "::endgroup::"
 
-        max_batch_size=$((5 * 1024 * 1024)) # 5 MB in bytes
+        max_batch_size=$((6 * 1024 * 1024)) # 7 MB in bytes
         batch_files=()
         batch_size=0
         batch_file=$(mktemp)
@@ -247,6 +247,10 @@ runs:
                 fi
             done
             echo "Building tree. Total batch size: $batch_total_size bytes"
+            # if batch size is greater than 6MB print message
+            if (( batch_total_size > max_batch_size )); then
+                echo "Warning: Github limits tree sizes to 7MB. Reduce your file size."
+            fi
             echo "Files in this batch: ${batch_filenames[*]}"
             tree_json=$(jq -n \
               --arg base_tree "$base_tree" \
