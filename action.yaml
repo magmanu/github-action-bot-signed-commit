@@ -26,11 +26,11 @@ inputs:
     type: string
     default: ${{ github.head_ref || github.ref_name }}
   FILE_LIST:
-    description: "Path to a text file containing the list of file paths to be committed. E.g.: subdir/file_paths.txt"
+    description: "Absolute path to a text file containing the list of file paths to be committed."
     required: true
     type: string
   WORKING_DIR:
-    description: "The working directory where the action will run."
+    description: "The absolute path for the working directory where the action will run."
     required: false
     type: string
     default: ${{ github.workspace }}
@@ -76,7 +76,7 @@ runs:
           "https://api.github.com/repos/$TARGET_OWNER/$TARGET_REPO/git/refs/heads/$TARGET_REF" | jq -r '.ref // empty')
 
         if [[ -n "$branch_exists" ]]; then
-          echo "Branch '$TARGET_REF' already exists."
+          echo "::debug::Branch '$TARGET_REF' already exists."
           exit 0
         fi
 
@@ -118,7 +118,7 @@ runs:
         FILE_LIST: ${{ inputs.FILE_LIST }}
         IS_DRY_RUN: ${{ inputs.IS_DRY_RUN }}
         COMMIT_MESSAGE: ${{ inputs.COMMIT_MESSAGE }}
-      working-directory: ${{ inputs.WORKING_DIR }}
+        WORKING_DIR: ${{ inputs.WORKING_DIR }}
       run: |
         #!/bin/bash
         set -euo pipefail
@@ -135,15 +135,32 @@ runs:
         cat "$FILE_LIST"
         echo "::endgroup::"
 
-        tree_items_file=$(mktemp)
-        echo "[" > "$tree_items_file"
-        first=1
+        # Control batch size. We want larger files to be committed on their own for easier debugging.
+        max_batch_size=$((7 * 1024 * 1024)) 
+        batch_files=()
+        batch_size=0
+        batch_file=$(mktemp)
+        echo "[" > "$batch_file"
+        first_in_batch=1
+
+        if [[ "$(pwd)" != "$WORKING_DIR" ]]; then
+          cd "$WORKING_DIR"
+        fi
 
         while IFS= read -r file_path; do
-
           if [[ ! -f "$file_path" ]]; then
-            echo "File not found: $file_path"
+            echo "Listed file $file_path not found."
             exit 1
+          fi
+
+          file_size=$(stat -c %s "$file_path")
+          if (( batch_size + file_size > max_batch_size )) && (( batch_size > 0 )); then
+            echo "]" >> "$batch_file"
+            batch_files+=("$batch_file")
+            batch_file=$(mktemp)
+            echo "[" > "$batch_file"
+            first_in_batch=1
+            batch_size=0
           fi
 
           mime_type=$(file --mime-type -b "$file_path")
@@ -161,6 +178,10 @@ runs:
                   -H "Accept: application/vnd.github+json" \
                   "$API/git/blobs" \
                   -d @- | jq -r '.sha')
+            if [[ -z "$blob_sha" ]]; then
+                echo "Error: Failed to create blob for binary file: $file_path"
+                exit 1
+            fi
 
             tree_entry=$(jq -n \
                 --arg path "$file_path" \
@@ -170,94 +191,114 @@ runs:
                 '{path: $path, mode: $mode, type: $type, sha: $sha}')
           else
             echo "Processing text file: $file_path"
-            temp_content=$(mktemp)
-            cat "$file_path" > "$temp_content"
+            temp_tree_content=$(mktemp)
+            cat "$file_path" > "$temp_tree_content"
             tree_entry=$(jq -n \
                 --arg path "$file_path" \
                 --arg mode "100644" \
                 --arg type "blob" \
-                --rawfile content "$temp_content" \
+                --rawfile content "$temp_tree_content" \
                 '{path: $path, mode: $mode, type: $type, content: $content}')
-            rm -f "$temp_content"
+            rm -f "$temp_tree_content"
           fi
 
-          if [ $first -eq 1 ]; then
-            echo "$tree_entry" >> "$tree_items_file"
-            first=0
+          if (( first_in_batch == 1 )); then
+            echo "$tree_entry" >> "$batch_file"
+            first_in_batch=0
           else
-            echo ",$tree_entry" >> "$tree_items_file"
+            echo ",$tree_entry" >> "$batch_file"
           fi
+
+          batch_size=$((batch_size + file_size))
         done < "$FILE_LIST"
 
-        echo "]" >> "$tree_items_file"
+        # Finalize last batch
+        if (( batch_size > 0 )); then
+          echo "]" >> "$batch_file"
+          batch_files+=("$batch_file")
+        fi
 
-        total_items=$(jq length "$tree_items_file")
-        batch_size=100
-        batches=$(( (total_items + batch_size - 1) / batch_size ))
-
-        echo "Get the latest commit"
+        echo "::debug::Get the latest commit"
         latest_commit=$(curl -s -H "Authorization: token $TOKEN" \
             "$API/git/refs/heads/$TARGET_REF" \
             | jq -r '.object.sha')
+        echo "::debug::Latest commit SHA: $latest_commit"
+
         if [[ -z "$latest_commit" ]]; then
             echo "Failed to retrieve the latest commit SHA for branch '$TARGET_REF'."
             if [[ "${inputs.SHOULD_CREATE_NEW_BRANCH}" == "false" ]]; then
-                echo "You have prevented the creation of branches that don't exist. If you regret it, set SHOULD_CREATE_NEW_BRANCH to true"
+                echo "You have prevented the creation of branches that don't exist. If that's not intentional, set SHOULD_CREATE_NEW_BRANCH to true"
                 exit 1
             fi
         fi
 
-        echo "Get the tree of the latest commit"
+        echo "::debug::Get the tree of the latest commit"
         base_tree=$(curl -s -H "Authorization: token $TOKEN" \
-            "$API/git/commits/$latest_commit" \
-            | jq -r '.tree.sha')
+            "$API/git/commits/$latest_commit"| jq -r '.tree.sha')
+        echo "::debug::Base tree SHA: $base_tree"
 
         parent_commit="$latest_commit"
 
-        for ((batch=0; batch<batches; batch++)); do
-            echo "::group::Performing signed commit. Batch $((batch + 1)) of $batches"
-            start=$((batch * batch_size))
-            end=$((start + batch_size - 1))
-            batch_file=$(mktemp)
+        for batch_file in "${batch_files[@]}"; do
+            batch_total_size=0
+            batch_filenames=()
+            for file_path in $(jq -r '.[].path' "$batch_file"); do
+                if [[ -f "$file_path" ]]; then
+                    file_size=$(stat -c %s "$file_path")
+                    batch_total_size=$((batch_total_size + file_size))
+                    batch_filenames+=("$file_path")
+                fi
+            done
 
-            # Extract a batch of tree items
-            jq ".[$start:$((end+1))]" "$tree_items_file" > "$batch_file"
+            echo "Building tree. Total batch size: $batch_total_size bytes"
+            echo "::group::Tree file list"
+            echo "Files in this batch: ${batch_filenames[*]}"
+            echo "::endgroup::"
 
-            echo "Building tree"
             tree_json=$(jq -n \
               --arg base_tree "$base_tree" \
               --slurpfile tree_items "$batch_file" \
               '{base_tree: $base_tree, tree: $tree_items[0]}')
 
-            echo "Create new tree with GH API" 
-            new_tree_sha=$(echo "$tree_json" | \
-              curl -s -H "Authorization: token $TOKEN" -H "Accept: application/vnd.github+json" \
-                -X POST "$API/git/trees" --data-binary @- | jq -r '.sha')
+            echo "::debug::Create new tree with GH API" 
+            response=$(echo "$tree_json" | \
+                  curl -s -H "Authorization: token $TOKEN" -H "Accept: application/vnd.github+json" \
+              -X POST "$API/git/trees" --data-binary @-)
+            new_tree=$(echo "$response" | jq -r '.sha // empty')
+            if [[ -z "$new_tree" ]]; then
+                echo "Failed to create new tree. Response:"
+                echo "$response"
+                exit 1
+            fi
+            echo "::debug::New tree sha: $new_tree"
 
             echo "Create commit with GH API (will be signed)"
             commit_json=$(jq -n \
               --arg msg "$COMMIT_MESSAGE $(date --utc +'%Y-%m-%dT%H:%M:%SZ')" \
-              --arg tree "$new_tree_sha" \
+              --arg tree "$new_tree" \
               --arg parent "$parent_commit" \
               '{message: $msg, tree: $tree, parents: [$parent]}')
+
             parent_commit=$(echo "$commit_json" | \
               curl -s -H "Authorization: token $TOKEN" -H "Accept: application/vnd.github+json" \
                 -X POST "$API/git/commits" --data-binary @- | jq -r '.sha')
+            echo "::debug::New parent commit sha: $parent_commit"
 
-            echo "Update base_tree for next batch"
-            base_tree="$new_tree_sha"
+            echo "::debug::Update base_tree for next batch"
+            base_tree="$new_tree"
             rm "$batch_file"
-            echo "::endgroup::"
         done
 
         if [[ "${IS_DRY_RUN}" == "true" ]]; then
             echo "Dry run mode is enabled. The target branch head will not point to the new signed commit."
         else
             echo "Update the target branch with the new commit"
+            echo "::debug::Parent commit sha: $parent_commit"
+
             move_head=$(curl -s -H "Authorization: token $TOKEN" -X PATCH \
               -d "{\"sha\":\"$parent_commit\"}" "$API/git/refs/heads/$TARGET_REF")
             if [[ $(echo "$move_head" | jq -r '.ref // empty') == "" ]]; then
-                echo "Failed to move the target branch head."
+                echo "Failed to move the target branch head. Parent commit SHA: $parent_commit"
                 echo "Response: $move_head"
                 exit 1
             fi
@@ -265,5 +306,5 @@ runs:
             echo "Target branch successfully updated with the new signed commit."
         fi
 
-        echo "New signed commit SHA:"
+        echo "New signed commit output:"
         echo "sha=$(echo $parent_commit)" | tee -a $GITHUB_OUTPUT
