@@ -29,6 +29,11 @@ inputs:
     description: "Path to a text file containing the list of file paths to be committed. Can be absolute or relative to the working directory."
     required: true
     type: string
+  WORKING_DIR:
+    description: "The absolute path for the working directory where the action will run."
+    required: false
+    type: string
+    default: ${{ github.workspace }}
   IS_DRY_RUN:
     description: "If set to true, the action will push the commits but leave them orphans (the head won't move.)"
     required: false
@@ -44,11 +49,6 @@ inputs:
     required: false
     type: string
     default: "Signed commit"
-  WORKING_DIR:
-    description: "The absolute path for the working directory where the action will run."
-    required: false
-    type: string
-    default: ${{ github.workspace }}
 
 outputs:
   sha:
