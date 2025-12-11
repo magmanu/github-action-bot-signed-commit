@@ -237,7 +237,14 @@ runs:
         parent_commit="$latest_commit"
 
         for batch_file in "${batch_files[@]}"; do
-            echo "Building tree. Items in this batch: $(jq length "$batch_file")"
+            batch_total_size=0
+            for file_path in $(jq -r '.[].path' "$batch_file"); do
+                if [[ -f "$file_path" ]]; then
+                    file_size=$(stat -c %s "$file_path")
+                    batch_total_size=$((batch_total_size + file_size))
+                fi
+            done
+            echo "Building tree. Items in this batch: $(jq length "$batch_file"), Total batch size: $batch_total_size bytes"
             tree_json=$(jq -n \
               --arg base_tree "$base_tree" \
               --slurpfile tree_items "$batch_file" \
