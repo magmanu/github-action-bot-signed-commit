@@ -45,7 +45,7 @@ inputs:
     type: string
     default: "Signed commit"
   WORKING_DIR:
-    description: "The working directory where the action will run."
+    description: "The absolute path for the working directory where the action will run."
     required: false
     type: string
     default: ${{ github.workspace }}
@@ -135,7 +135,8 @@ runs:
         cat "$FILE_LIST"
         echo "::endgroup::"
 
-        max_batch_size=$((6 * 1024 * 1024)) # 7 MB in bytes
+        # Control batch size. We want larger files to be committed on their own for easier debugging.
+        max_batch_size=$((7 * 1024 * 1024)) 
         batch_files=()
         batch_size=0
         batch_file=$(mktemp)
@@ -153,7 +154,6 @@ runs:
           fi
 
           file_size=$(stat -c %s "$file_path")
-          # If adding this file would exceed the batch size, start a new batch
           if (( batch_size + file_size > max_batch_size )) && (( batch_size > 0 )); then
             echo "]" >> "$batch_file"
             batch_files+=("$batch_file")
@@ -178,7 +178,8 @@ runs:
                   -H "Accept: application/vnd.github+json" \
                   "$API/git/blobs" \
                   -d @- | jq -r '.sha')
-            echo "Binary content blob sha: $blob_sha"
+            if [[ -z "$blob_sha" ]]; then
+                echo "===> Warning: Failed to create blob for binary file: $file_path"
 
             tree_entry=$(jq -n \
                 --arg path "$file_path" \
@@ -246,12 +247,12 @@ runs:
                     batch_filenames+=("$file_path")
                 fi
             done
+
             echo "Building tree. Total batch size: $batch_total_size bytes"
-            # if batch size is greater than 6MB print message
-            if (( batch_total_size > max_batch_size )); then
-                echo "Warning: Github limits tree sizes to 7MB. Reduce your file size."
-            fi
+            echo "::group::Tree file list"
             echo "Files in this batch: ${batch_filenames[*]}"
+            echo "::endgroup::"
+
             tree_json=$(jq -n \
               --arg base_tree "$base_tree" \
               --slurpfile tree_items "$batch_file" \
