@@ -261,7 +261,8 @@ runs:
                 -X POST "$API/git/commits" --data-binary @- | jq -r '.sha')
             echo "New parent commit sha: $parent_commit"
 
-            echo "Update base_tree for next batch"
+            echo "Update base_tree for next batch and sleep 5 to ease API spamming"
+            sleep 5
             base_tree="$new_tree"
             rm "$batch_file"
             echo "::endgroup::"
