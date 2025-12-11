@@ -197,7 +197,7 @@ runs:
         echo "]" >> "$tree_items_file"
 
         total_items=$(jq length "$tree_items_file")
-        batch_size=50
+        batch_size=10
         batches=$(( (total_items + batch_size - 1) / batch_size ))
 
         echo "Get the latest commit"
