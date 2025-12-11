@@ -230,17 +230,17 @@ runs:
             # Extract a batch of tree items
             jq ".[$start:$((end+1))]" "$tree_items_file" > "$batch_file"
 
-            echo "Building tree"
+            echo "Building tree. Base tree: $base_tree. Items in this batch: $(jq length "$batch_file")"
             tree_json=$(jq -n \
               --arg base_tree "$base_tree" \
               --slurpfile tree_items "$batch_file" \
               '{base_tree: $base_tree, tree: $tree_items[0]}')
-            echo "Tree JSON:"
-            echo "$tree_json"
+
             echo "Create new tree with GH API" 
             response=$(echo "$tree_json" | \
                   curl -s -H "Authorization: token $TOKEN" -H "Accept: application/vnd.github+json" \
               -X POST "$API/git/trees" --data-binary @-)
+            echo "Tree creation response: $response"
             new_tree=$(echo "$response" | jq -r '.sha // empty')
             if [[ -z "$new_tree" ]]; then
                 echo "Failed to create new tree. Response:"
