@@ -14,7 +14,7 @@ Sign commits using GitHub App or GITHUB_TOKEN. Compatible with large and binary 
 | IS_DRY_RUN | False | boolean |  | If set to true, the action will push the commits but leave them orphans (the head won't move.) |
 | SHOULD_CREATE_NEW_BRANCH | False | boolean | `True` | If set to true, the action will create the target branch if it doesn't exist. |
 | COMMIT_MESSAGE | False | string | `Signed commit` | The commit message to use for the signed commits. Your message will be suffixed with a UTC human-friendly timestamp. |
-| WORKING_DIR | False | string | `${{ github.workspace }}` | The working directory where the action will run. |
+| WORKING_DIR | False | string | `${{ github.workspace }}` | The absolute path for the working directory where the action will run. |
 
 # outputs
 | Title | Description | Value |
