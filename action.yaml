@@ -179,7 +179,6 @@ runs:
                   "$API/git/blobs" \
                   -d @- | jq -r '.sha')
             echo "Binary content blob sha: $blob_sha"
-            sleep 5
 
             tree_entry=$(jq -n \
                 --arg path "$file_path" \
@@ -269,8 +268,7 @@ runs:
                 -X POST "$API/git/commits" --data-binary @- | jq -r '.sha')
             echo "New parent commit sha: $parent_commit"
 
-            echo "Update base_tree for next batch and sleep 5 to ease API spamming"
-            sleep 5
+            echo "Update base_tree for next batch"
             base_tree="$new_tree"
             rm "$batch_file"
             echo "::endgroup::"
