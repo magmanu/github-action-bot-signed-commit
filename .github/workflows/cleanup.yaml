@@ -21,7 +21,7 @@ jobs:
           days-threshold: 7
       
       - name: Remove Testing Branches
-        uses: fpicalausa/remove-stale-branches@v2.4.0
+        uses: fpicalausa/remove-stale-branches@v2.6.1
         with:
           restrict-branches-regex: ^qa-.*$
           days-before-branch-stale: 7
