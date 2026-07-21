@@ -11,13 +11,13 @@ jobs:
     runs-on: ubuntu-latest
     name: Document GitHub action
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event.client_payload.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.13' 
       - run: |
